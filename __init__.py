@@ -36,9 +36,6 @@ else:
 PickerWindows = []
 Clipboard = []
 
-def replaceMytonaPath(text): 
-    return re.sub(".*[\\/]3d Animation Dept\\b", "$MYTONA_PATH", text)
-
 def mayaVisibilityCallback(attr, data):
     item = data["item"]
     if not pm.getAttr(attr):
@@ -2004,7 +2001,7 @@ class PropertiesWidget(QWidget):
 
     def imageChanged(self):
         if self._updating:return
-        self.pickerItem.image = replaceMytonaPath(self.imageWidget.imagePath)
+        self.pickerItem.image = self.imageWidget.imagePath
         self.imageAspectRatioWidget.setEnabled(True if self.pickerItem.image else False)
 
         self.changedProperties.append("image")
