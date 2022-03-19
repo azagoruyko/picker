@@ -1,0 +1,2139 @@
+{
+    "name": "",
+    "items": [
+        {
+            "position": [
+                20.0,
+                155.0
+            ],
+            "background": "#69ab69",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_arm_2_bendRig_2_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                true,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -20.0,
+                -20.0
+            ],
+            "group": "bends",
+            "svgpath": "M 0 40 L 40 40 L 40 0 L 60 0 L 60 40 L 100 40 L 100 60 L 60 60 L 60 100 L 40 100 L 40 60 L 0 60 Z"
+        },
+        {
+            "position": [
+                30.0,
+                130.0
+            ],
+            "background": "#69ab69",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_arm_bend_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                true,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -20.0,
+                -20.0
+            ],
+            "group": "bends",
+            "svgpath": "M 0 40 L 40 40 L 40 0 L 60 0 L 60 40 L 100 40 L 100 60 L 60 60 L 60 100 L 40 100 L 40 60 L 0 60 Z"
+        },
+        {
+            "position": [
+                40.0,
+                105.0
+            ],
+            "background": "#69ab69",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_arm_1_bendRig_2_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                true,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -20.0,
+                -20.0
+            ],
+            "group": "bends",
+            "svgpath": "M 0 40 L 40 40 L 40 0 L 60 0 L 60 40 L 100 40 L 100 60 L 60 60 L 60 100 L 40 100 L 40 60 L 0 60 Z"
+        },
+        {
+            "position": [
+                55.0,
+                140.0
+            ],
+            "background": "#67ab9f",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_arm_ik_polevector_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                true,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -21.0,
+                -21.0
+            ],
+            "group": "R_arm",
+            "svgpath": "M 50,0 C -20,0 -20,100 50,100 C 120,100 120,0 50,0 Z"
+        },
+        {
+            "position": [
+                65.0,
+                105.0
+            ],
+            "background": "#ea6b66",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_arm_options_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                true,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -20.0,
+                -19.0
+            ],
+            "group": "R_arm",
+            "svgpath": "M 0 5.68 C 16.18 0 33.82 0 50 5.68 C 66.18 11.36 83.82 11.36 100 5.68 L 100 50.36 C 83.82 56.04 66.18 56.04 50 50.36 C 33.82 44.68 16.18 44.68 0 50.36 L 0 100 Z"
+        },
+        {
+            "position": [
+                60.0,
+                190.0
+            ],
+            "background": "#67ab9f",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_arm_ik_control",
+            "label": "ik",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                true,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -19.0,
+                -19.0
+            ],
+            "group": "R_arm",
+            "svgpath": "M 0 0 h 100 v 100 h -100 v -100 Z"
+        },
+        {
+            "position": [
+                70.0,
+                165.0
+            ],
+            "background": "#B5739D",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_arm_fk_3_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -17.0,
+                -20.0
+            ],
+            "group": "R_arm",
+            "svgpath": "M 0 100 L 20 0 L 100 0 L 80 100 Z"
+        },
+        {
+            "position": [
+                80.0,
+                140.0
+            ],
+            "background": "#B5739D",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_arm_fk_2_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -17.0,
+                -20.0
+            ],
+            "group": "R_arm",
+            "svgpath": "M 0 100 L 20 0 L 100 0 L 80 100 Z"
+        },
+        {
+            "position": [
+                90.0,
+                115.0
+            ],
+            "background": "#B5739D",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_arm_fk_1_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -17.0,
+                -20.0
+            ],
+            "group": "R_arm",
+            "svgpath": "M 0 100 L 20 0 L 100 0 L 80 100 Z"
+        },
+        {
+            "position": [
+                255.0,
+                190.0
+            ],
+            "background": "#67ab9f",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_arm_ik_control",
+            "label": "ik",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -19.0,
+                -19.0
+            ],
+            "group": "L_arm",
+            "svgpath": "M 0 0 h 100 v 100 h -100 v -100 Z"
+        },
+        {
+            "position": [
+                270.0,
+                140.0
+            ],
+            "background": "#67ab9f",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_arm_ik_polevector_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -21.0,
+                -21.0
+            ],
+            "group": "L_arm",
+            "svgpath": "M 50,0 C -20,0 -20,100 50,100 C 120,100 120,0 50,0 Z"
+        },
+        {
+            "position": [
+                260.0,
+                110.0
+            ],
+            "background": "#ea6b66",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_arm_options_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -20.0,
+                -19.0
+            ],
+            "group": "L_arm",
+            "svgpath": "M 0 5.68 C 16.18 0 33.82 0 50 5.68 C 66.18 11.36 83.82 11.36 100 5.68 L 100 50.36 C 83.82 56.04 66.18 56.04 50 50.36 C 33.82 44.68 16.18 44.68 0 50.36 L 0 100 Z"
+        },
+        {
+            "position": [
+                305.0,
+                155.0
+            ],
+            "background": "#69ab69",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_arm_2_bendRig_2_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -20.0,
+                -20.0
+            ],
+            "group": "bends",
+            "svgpath": "M 0 40 L 40 40 L 40 0 L 60 0 L 60 40 L 100 40 L 100 60 L 60 60 L 60 100 L 40 100 L 40 60 L 0 60 Z"
+        },
+        {
+            "position": [
+                295.0,
+                130.0
+            ],
+            "background": "#69ab69",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_arm_bend_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -20.0,
+                -20.0
+            ],
+            "group": "bends",
+            "svgpath": "M 0 40 L 40 40 L 40 0 L 60 0 L 60 40 L 100 40 L 100 60 L 60 60 L 60 100 L 40 100 L 40 60 L 0 60 Z"
+        },
+        {
+            "position": [
+                285.0,
+                105.0
+            ],
+            "background": "#69ab69",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_arm_1_bendRig_2_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -20.0,
+                -20.0
+            ],
+            "group": "bends",
+            "svgpath": "M 0 40 L 40 40 L 40 0 L 60 0 L 60 40 L 100 40 L 100 60 L 60 60 L 60 100 L 40 100 L 40 60 L 0 60 Z"
+        },
+        {
+            "position": [
+                240.0,
+                165.0
+            ],
+            "background": "#B5739D",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_arm_fk_3_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                true,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -17.0,
+                -20.0
+            ],
+            "group": "L_arm",
+            "svgpath": "M 0 100 L 20 0 L 100 0 L 80 100 Z"
+        },
+        {
+            "position": [
+                230.0,
+                140.0
+            ],
+            "background": "#B5739D",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_arm_fk_2_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                true,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -17.0,
+                -20.0
+            ],
+            "group": "L_arm",
+            "svgpath": "M 0 100 L 20 0 L 100 0 L 80 100 Z"
+        },
+        {
+            "position": [
+                220.0,
+                115.0
+            ],
+            "background": "#B5739D",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_arm_fk_1_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                true,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -17.0,
+                -20.0
+            ],
+            "group": "L_arm",
+            "svgpath": "M 0 100 L 20 0 L 100 0 L 80 100 Z"
+        },
+        {
+            "position": [
+                75.0,
+                25.0
+            ],
+            "background": "#FFF2CC",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "M_eye_ik_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -10.0,
+                -21.0
+            ],
+            "group": "",
+            "svgpath": "M 0 0 h 100 v 100 h -100 v -100 Z"
+        },
+        {
+            "position": [
+                215.0,
+                50.0
+            ],
+            "background": "#EA6B66",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "M_head_options_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -20.0,
+                -19.0
+            ],
+            "group": "head",
+            "svgpath": "M 0 5.68 C 16.18 0 33.82 0 50 5.68 C 66.18 11.36 83.82 11.36 100 5.68 L 100 50.36 C 83.82 56.04 66.18 56.04 50 50.36 C 33.82 44.68 16.18 44.68 0 50.36 L 0 100 Z"
+        },
+        {
+            "position": [
+                155.0,
+                30.0
+            ],
+            "background": "#F19C99",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "M_head_ik_control",
+            "label": "ik",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -16.0,
+                -16.0
+            ],
+            "group": "head",
+            "svgpath": "M 50,0 C -20,0 -20,100 50,100 C 120,100 120,0 50,0 Z"
+        },
+        {
+            "position": [
+                135.0,
+                95.0
+            ],
+            "background": "#B5739D",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "M_neck_fk_1_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -6.0,
+                -22.0
+            ],
+            "group": "head",
+            "svgpath": "M 0 0 h 100 v 100 h -100 v -100 Z"
+        },
+        {
+            "position": [
+                50.0,
+                305.0
+            ],
+            "background": "#69ab69",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_leg_2_bendRig_2_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -20.0,
+                -20.0
+            ],
+            "group": "bends",
+            "svgpath": "M 0 40 L 40 40 L 40 0 L 60 0 L 60 40 L 100 40 L 100 60 L 60 60 L 60 100 L 40 100 L 40 60 L 0 60 Z"
+        },
+        {
+            "position": [
+                60.0,
+                280.0
+            ],
+            "background": "#69ab69",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_leg_bend_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -20.0,
+                -20.0
+            ],
+            "group": "bends",
+            "svgpath": "M 0 40 L 40 40 L 40 0 L 60 0 L 60 40 L 100 40 L 100 60 L 60 60 L 60 100 L 40 100 L 40 60 L 0 60 Z"
+        },
+        {
+            "position": [
+                70.0,
+                255.0
+            ],
+            "background": "#69ab69",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_leg_1_bendRig_2_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -20.0,
+                -20.0
+            ],
+            "group": "bends",
+            "svgpath": "M 0 40 L 40 40 L 40 0 L 60 0 L 60 40 L 100 40 L 100 60 L 60 60 L 60 100 L 40 100 L 40 60 L 0 60 Z"
+        },
+        {
+            "position": [
+                265.0,
+                305.0
+            ],
+            "background": "#69ab69",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_leg_2_bendRig_2_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -20.0,
+                -20.0
+            ],
+            "group": "bends",
+            "svgpath": "M 0 40 L 40 40 L 40 0 L 60 0 L 60 40 L 100 40 L 100 60 L 60 60 L 60 100 L 40 100 L 40 60 L 0 60 Z"
+        },
+        {
+            "position": [
+                255.0,
+                280.0
+            ],
+            "background": "#69ab69",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_leg_bend_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -20.0,
+                -20.0
+            ],
+            "group": "bends",
+            "svgpath": "M 0 40 L 40 40 L 40 0 L 60 0 L 60 40 L 100 40 L 100 60 L 60 60 L 60 100 L 40 100 L 40 60 L 0 60 Z"
+        },
+        {
+            "position": [
+                245.0,
+                255.0
+            ],
+            "background": "#69ab69",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_leg_1_bendRig_2_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -20.0,
+                -20.0
+            ],
+            "group": "bends",
+            "svgpath": "M 0 40 L 40 40 L 40 0 L 60 0 L 60 40 L 100 40 L 100 60 L 60 60 L 60 100 L 40 100 L 40 60 L 0 60 Z"
+        },
+        {
+            "position": [
+                85.0,
+                305.0
+            ],
+            "background": "#b3729b",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_leg_toe_fk_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                true,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -20.0,
+                -20.0
+            ],
+            "group": "R_leg",
+            "svgpath": "M 20,0 L 100,80 L 80,100 L 0,20 Z"
+        },
+        {
+            "position": [
+                230.0,
+                300.0
+            ],
+            "background": "#b5739d",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_leg_toe_fk_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -20.0,
+                -20.0
+            ],
+            "group": "L_leg",
+            "svgpath": "M 20,0 L 100,80 L 80,100 L 0,20 Z"
+        },
+        {
+            "position": [
+                95.0,
+                275.0
+            ],
+            "background": "#67ab9f",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_leg_ik_polevector_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -21.0,
+                -21.0
+            ],
+            "group": "R_leg",
+            "svgpath": "M 50,0 C -20,0 -20,100 50,100 C 120,100 120,0 50,0 Z"
+        },
+        {
+            "position": [
+                225.0,
+                275.0
+            ],
+            "background": "#67ab9f",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_leg_ik_polevector_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -21.0,
+                -21.0
+            ],
+            "group": "L_leg",
+            "svgpath": "M 50,0 C -20,0 -20,100 50,100 C 120,100 120,0 50,0 Z"
+        },
+        {
+            "position": [
+                210.0,
+                310.0
+            ],
+            "background": "#67ab9f",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_leg_ik_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                true,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -17.0,
+                -16.0
+            ],
+            "group": "L_leg",
+            "svgpath": "M 51 61 L 6.5 61 Q 1 61 1 55.5 L 1 32.5 Q 1 27 6.32 25.62 L 95.68 2.38 Q 101 1 101 6.5 L 101 55.5 Q 101 61 95.5 61 Z"
+        },
+        {
+            "position": [
+                100.0,
+                310.0
+            ],
+            "background": "#67ab9f",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_leg_ik_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -17.0,
+                -16.0
+            ],
+            "group": "R_leg",
+            "svgpath": "M 51 61 L 6.5 61 Q 1 61 1 55.5 L 1 32.5 Q 1 27 6.32 25.62 L 95.68 2.38 Q 101 1 101 6.5 L 101 55.5 Q 101 61 95.5 61 Z"
+        },
+        {
+            "position": [
+                95.0,
+                240.0
+            ],
+            "background": "#ea6b66",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_leg_options_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                true,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -20.0,
+                -19.0
+            ],
+            "group": "R_leg",
+            "svgpath": "M 0 5.68 C 16.18 0 33.82 0 50 5.68 C 66.18 11.36 83.82 11.36 100 5.68 L 100 50.36 C 83.82 56.04 66.18 56.04 50 50.36 C 33.82 44.68 16.18 44.68 0 50.36 L 0 100 Z"
+        },
+        {
+            "position": [
+                220.0,
+                240.0
+            ],
+            "background": "#ea6b66",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_leg_options_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -20.0,
+                -19.0
+            ],
+            "group": "L_leg",
+            "svgpath": "M 0 5.68 C 16.18 0 33.82 0 50 5.68 C 66.18 11.36 83.82 11.36 100 5.68 L 100 50.36 C 83.82 56.04 66.18 56.04 50 50.36 C 33.82 44.68 16.18 44.68 0 50.36 L 0 100 Z"
+        },
+        {
+            "position": [
+                195.0,
+                290.0
+            ],
+            "background": "#B5739D",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_leg_fk_3_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                true,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -17.0,
+                -20.0
+            ],
+            "group": "L_leg",
+            "svgpath": "M 0 100 L 20 0 L 100 0 L 80 100 Z"
+        },
+        {
+            "position": [
+                185.0,
+                265.0
+            ],
+            "background": "#B5739D",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_leg_fk_2_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                true,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -17.0,
+                -20.0
+            ],
+            "group": "L_leg",
+            "svgpath": "M 0 100 L 20 0 L 100 0 L 80 100 Z"
+        },
+        {
+            "position": [
+                175.0,
+                240.0
+            ],
+            "background": "#B5739D",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_leg_fk_1_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                true,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -17.0,
+                -20.0
+            ],
+            "group": "L_leg",
+            "svgpath": "M 0 100 L 20 0 L 100 0 L 80 100 Z"
+        },
+        {
+            "position": [
+                115.0,
+                290.0
+            ],
+            "background": "#B5739D",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_leg_fk_3_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -17.0,
+                -20.0
+            ],
+            "group": "R_leg",
+            "svgpath": "M 0 100 L 20 0 L 100 0 L 80 100 Z"
+        },
+        {
+            "position": [
+                135.0,
+                240.0
+            ],
+            "background": "#B5739D",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_leg_fk_1_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -17.0,
+                -20.0
+            ],
+            "group": "R_leg",
+            "svgpath": "M 0 100 L 20 0 L 100 0 L 80 100 Z"
+        },
+        {
+            "position": [
+                125.0,
+                265.0
+            ],
+            "background": "#B5739D",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_leg_fk_2_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -17.0,
+                -20.0
+            ],
+            "group": "R_leg",
+            "svgpath": "M 0 100 L 20 0 L 100 0 L 80 100 Z"
+        },
+        {
+            "position": [
+                135.0,
+                215.0
+            ],
+            "background": "#d3a22f",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "M_spine_ik_1_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                true
+            ],
+            "rotated": false,
+            "scale": [
+                -12.0,
+                -20.0
+            ],
+            "group": "spine",
+            "svgpath": "M 0 100 L 20 0 L 80 0 L 100 100 Z"
+        },
+        {
+            "position": [
+                135.0,
+                115.0
+            ],
+            "background": "#d3a22f",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "M_spine_ik_2_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -6.0,
+                -20.0
+            ],
+            "group": "spine",
+            "svgpath": "M 0 100 L 20 0 L 80 0 L 100 100 Z"
+        },
+        {
+            "position": [
+                120.0,
+                160.0
+            ],
+            "background": "#d3a22f",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "M_spine_fix_control",
+            "label": "fix",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                1.0,
+                -22.0
+            ],
+            "group": "spine",
+            "svgpath": "M 0 0 h 100 v 100 h -100 v -100 Z"
+        },
+        {
+            "position": [
+                130.0,
+                140.0
+            ],
+            "background": "#FFE599",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "M_spine_fk_3_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -4.0,
+                -21.0
+            ],
+            "group": "spine",
+            "svgpath": "M 0 0 h 100 v 100 h -100 v -100 Z"
+        },
+        {
+            "position": [
+                130.0,
+                175.0
+            ],
+            "background": "#FFE599",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "M_spine_fk_2_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -4.0,
+                -21.0
+            ],
+            "group": "spine",
+            "svgpath": "M 0 0 h 100 v 100 h -100 v -100 Z"
+        },
+        {
+            "position": [
+                110.0,
+                195.0
+            ],
+            "background": "#FFE599",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "M_spine_fk_1_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                6.0,
+                -21.0
+            ],
+            "group": "spine",
+            "svgpath": "M 0 0 h 100 v 100 h -100 v -100 Z"
+        },
+        {
+            "position": [
+                15.0,
+                396.0
+            ],
+            "background": "#d8d228",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "main_control",
+            "label": "Main",
+            "script": "",
+            "anchor": "leftBottom",
+            "anchorOffset": [
+                15.0,
+                40
+            ],
+            "flat": true,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -5.0,
+                -19.0
+            ],
+            "group": "",
+            "svgpath": "M 0 0 h 100 v 100 h -100 v -100 Z"
+        },
+        {
+            "position": [
+                125.0,
+                305.0
+            ],
+            "background": "#FFF4C3",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_leg_footroll_control",
+            "label": "f",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -18.0,
+                -18.0
+            ],
+            "group": "R_leg",
+            "svgpath": "M 50,0 L 100,50 L 50,100 L 0,50 Z"
+        },
+        {
+            "position": [
+                190.0,
+                305.0
+            ],
+            "background": "#FFF4C3",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_leg_footroll_control",
+            "label": "f",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -18.0,
+                -18.0
+            ],
+            "group": "L_leg",
+            "svgpath": "M 50,0 L 100,50 L 50,100 L 0,50 Z"
+        },
+        {
+            "position": [
+                80.0,
+                45.0
+            ],
+            "background": "#B5739D",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_eye_offset_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -20.0,
+                -20.0
+            ],
+            "group": "",
+            "svgpath": "M 50,0 C -20,0 -20,100 50,100 C 120,100 120,0 50,0 Z"
+        },
+        {
+            "position": [
+                110.0,
+                45.0
+            ],
+            "background": "#B5739D",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_eye_offset_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -20.0,
+                -20.0
+            ],
+            "group": "",
+            "svgpath": "M 50,0 C -20,0 -20,100 50,100 C 120,100 120,0 50,0 Z"
+        },
+        {
+            "position": [
+                155.0,
+                70.0
+            ],
+            "background": "#F19C99",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "M_head_fk_control",
+            "label": "fk",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                true
+            ],
+            "rotated": true,
+            "scale": [
+                -17.0,
+                -20.0
+            ],
+            "group": "head",
+            "svgpath": "M 0 0 Q 100 0 100 50 Q 100 100 0 100 Z"
+        },
+        {
+            "position": [
+                210.0,
+                335.0
+            ],
+            "background": "#67ab9f",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_leg_toe_ik_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -17.0,
+                -23.0
+            ],
+            "group": "L_leg",
+            "svgpath": "M 0 0 h 100 v 100 h -100 v -100 Z"
+        },
+        {
+            "position": [
+                100.0,
+                335.0
+            ],
+            "background": "#67ab9f",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_leg_toe_ik_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -17.0,
+                -23.0
+            ],
+            "group": "R_leg",
+            "svgpath": "M 0 0 h 100 v 100 h -100 v -100 Z"
+        },
+        {
+            "position": [
+                190.0,
+                215.0
+            ],
+            "background": "#ffe599",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "M_spine_hip_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -15.0,
+                -20.0
+            ],
+            "group": "spine",
+            "svgpath": "M 50,0 L 100,50 L 50,100 L 0,50 Z"
+        },
+        {
+            "position": [
+                210.0,
+                80.0
+            ],
+            "background": "#CDA2BE",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_shoulder_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                true,
+                true
+            ],
+            "rotated": false,
+            "scale": [
+                -17.0,
+                -17.0
+            ],
+            "group": "L_arm",
+            "svgpath": "M 79.39 90.45 C 64.94 100.95 45.98 102.94 29.66 95.68 C 13.34 88.41 2.14 72.99 0.27 55.23 C -1.59 37.46 6.16 20.05 20.61 9.55 L 35.31 29.77 C 28.08 35.02 24.2 43.73 25.14 52.61 C 26.07 61.5 31.67 69.21 39.83 72.84 C 47.99 76.47 57.47 75.48 64.69 70.23 Z"
+        },
+        {
+            "position": [
+                110.0,
+                85.0
+            ],
+            "background": "#CDA2BE",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_shoulder_control",
+            "label": "",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                true
+            ],
+            "rotated": false,
+            "scale": [
+                -17.0,
+                -17.0
+            ],
+            "group": "R_arm",
+            "svgpath": "M 79.39 90.45 C 64.94 100.95 45.98 102.94 29.66 95.68 C 13.34 88.41 2.14 72.99 0.27 55.23 C -1.59 37.46 6.16 20.05 20.61 9.55 L 35.31 29.77 C 28.08 35.02 24.2 43.73 25.14 52.61 C 26.07 61.5 31.67 69.21 39.83 72.84 C 47.99 76.47 57.47 75.48 64.69 70.23 Z"
+        },
+        {
+            "position": [
+                260.0,
+                220.0
+            ],
+            "background": "#6680d7",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_thumb_control",
+            "label": "t",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -21.0,
+                -21.0
+            ],
+            "group": "L_fingers",
+            "svgpath": "M 0 0 h 100 v 100 h -100 v -100 Z"
+        },
+        {
+            "position": [
+                280.0,
+                215.0
+            ],
+            "background": "#6680d7",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_index_control",
+            "label": "i",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -21.0,
+                -21.0
+            ],
+            "group": "L_fingers",
+            "svgpath": "M 0 0 h 100 v 100 h -100 v -100 Z"
+        },
+        {
+            "position": [
+                290.0,
+                235.0
+            ],
+            "background": "#6680d7",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_middle_control",
+            "label": "m",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -21.0,
+                -21.0
+            ],
+            "group": "L_fingers",
+            "svgpath": "M 0 0 h 100 v 100 h -100 v -100 Z"
+        },
+        {
+            "position": [
+                310.0,
+                235.0
+            ],
+            "background": "#6680d7",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_ring_control",
+            "label": "r",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -21.0,
+                -21.0
+            ],
+            "group": "L_fingers",
+            "svgpath": "M 0 0 h 100 v 100 h -100 v -100 Z"
+        },
+        {
+            "position": [
+                310.0,
+                255.0
+            ],
+            "background": "#6680d7",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "L_pinky_control",
+            "label": "p",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -21.0,
+                -21.0
+            ],
+            "group": "L_fingers",
+            "svgpath": "M 0 0 h 100 v 100 h -100 v -100 Z"
+        },
+        {
+            "position": [
+                60.0,
+                220.0
+            ],
+            "background": "#6680d7",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_thumb_control",
+            "label": "t",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -21.0,
+                -21.0
+            ],
+            "group": "R_fingers",
+            "svgpath": "M 0 0 h 100 v 100 h -100 v -100 Z"
+        },
+        {
+            "position": [
+                40.0,
+                210.0
+            ],
+            "background": "#6680d7",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_index_control",
+            "label": "i",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -21.0,
+                -21.0
+            ],
+            "group": "R_fingers",
+            "svgpath": "M 0 0 h 100 v 100 h -100 v -100 Z"
+        },
+        {
+            "position": [
+                35.0,
+                230.0
+            ],
+            "background": "#6680d7",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_middle_control",
+            "label": "m",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -21.0,
+                -21.0
+            ],
+            "group": "R_fingers",
+            "svgpath": "M 0 0 h 100 v 100 h -100 v -100 Z"
+        },
+        {
+            "position": [
+                15.0,
+                230.0
+            ],
+            "background": "#6680d7",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_ring_control",
+            "label": "r",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -21.0,
+                -21.0
+            ],
+            "group": "R_fingers",
+            "svgpath": "M 0 0 h 100 v 100 h -100 v -100 Z"
+        },
+        {
+            "position": [
+                15.0,
+                250.0
+            ],
+            "background": "#6680d7",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "R_pinky_control",
+            "label": "p",
+            "script": "",
+            "anchor": "",
+            "anchorOffset": [
+                0,
+                0
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -21.0,
+                -21.0
+            ],
+            "group": "R_fingers",
+            "svgpath": "M 0 0 h 100 v 100 h -100 v -100 Z"
+        },
+        {
+            "position": [
+                100.0,
+                396.0
+            ],
+            "background": "#FFB570",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "",
+            "label": "Select all",
+            "script": "import rig_libs\nrig_libs.selectControls(\"@\")",
+            "anchor": "leftBottom",
+            "anchorOffset": [
+                100.0,
+                40
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -2.0,
+                -19.0
+            ],
+            "group": "",
+            "svgpath": "M 0 0 h 100 v 100 h -100 v -100 Z"
+        },
+        {
+            "position": [
+                200.0,
+                396.0
+            ],
+            "background": "#FFB570",
+            "foreground": "#000000",
+            "image": "",
+            "imageAspectRatio": 2,
+            "control": "",
+            "label": "Reset all",
+            "script": "import rig_libs\nrig_libs.resetControls(\"@\")",
+            "anchor": "leftBottom",
+            "anchorOffset": [
+                200.0,
+                40
+            ],
+            "flat": false,
+            "flipped": [
+                false,
+                false
+            ],
+            "rotated": false,
+            "scale": [
+                -3.0,
+                -19.0
+            ],
+            "group": "",
+            "svgpath": "M 0 0 h 100 v 100 h -100 v -100 Z"
+        }
+    ],
+    "size": [
+        353,
+        436
+    ]
+}
