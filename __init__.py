@@ -4,6 +4,7 @@ import random
 import json
 import re
 #import svg.path as svg
+import base64
 
 from Qt.QtGui import *
 from Qt.QtCore import *
@@ -22,8 +23,7 @@ try:
 except ImportError:
     IsInsideMaya = False
 
-GridSize = 5
-ScaleSize = 5
+from classes import *    
 
 NiceColors = ["#E6D0DE", "#CDA2BE", "#B5739D", "#E1D5E7", "#C3ABD0", "#A680B8", "#D4E1F5", "#A9C4EB", "#7EA6E0", "#D5E8D4", "#9AC7BF", "#67AB9F", "#D5E8D4", "#B9E0A5", "#97D077", "#FFF2CC", "#FFE599", "#FFD966", "#FFF4C3", "#FFCE9F", "#FFB570", "#F8CECC", "#F19C99", "#EA6B66"]
 getNiceColor = lambda:NiceColors[random.randrange(len(NiceColors))]
@@ -35,6 +35,19 @@ else:
 
 PickerWindows = []
 Clipboard = []
+
+def pixmap2str(pixmap):
+    ba = QByteArray()
+    buff = QBuffer(ba)
+    buff.open(QIODevice.WriteOnly) 
+    pixmap.save(buff, "JPG", 100)
+    return base64.b64encode(ba.data()).decode("utf8")
+
+def str2pixmap(pixmapStr):    
+    ba = QByteArray.fromRawData(base64.b64decode(pixmapStr.encode("utf8")))
+    pixmap = QPixmap()
+    pixmap.loadFromData(ba, "JPG")
+    return pixmap
 
 def mayaVisibilityCallback(attr, data):
     item = data["item"]
@@ -79,7 +92,7 @@ def mayaSelectionChangedCallback(mayaParameters, data):
 def splitString(s):
     return re.split("[ ,;]+", s)
 
-def roundTo(n, k=GridSize):
+def roundTo(n, k=5):
     def _round(n):
         return int(n/k)*k
 
@@ -259,115 +272,6 @@ def clearLayout(layout):
              else:
                  clearLayout(item.layout())
 
-class PickerItem(object):
-    def __init__(self, svgpath="M 0 0 h 100 v 100 h -100 v -100 Z"):
-        self.position = [0,0]
-        self.background = "#eaa763" #getNiceColor()
-        self.foreground = "#000000"
-        self.image = ""
-        self.imageAspectRatio = 2 # 0-IgnoreAspectRatio, 1-KeepAspectRatio, 2-KeepAspectRatioByExpanding
-        self.control = ""
-        self.label = ""       
-        self.font = ""
-        self.script = ""        
-        self.flat = True # draw specular gradient when True
-        self.flipped = [False, False]
-        self.rotated = False
-        self.scale = [-15, -15] # units
-        self.group = "" # used in double clicks
-        self.svgpath = svgpath
-
-    def copy(self, other):
-        self.position = other.position[:]
-        self.background = other.background
-        self.foreground = other.foreground
-        self.image = other.image
-        self.imageAspectRatio = other.imageAspectRatio
-        self.control = other.control
-        self.label = other.label
-        self.font = other.font
-        self.script = other.script
-        self.flat = other.flat
-        self.flipped = other.flipped[:]
-        self.rotated = other.rotated
-        self.scale = other.scale[:]
-        self.group = other.group  
-        self.svgpath = other.svgpath 
-
-    def duplicate(self):
-        a = PickerItem()
-        a.copy(self)
-        return a
-
-    def toJson(self):
-        return {"position":self.position,
-                "background":self.background,
-                "foreground":self.foreground,
-                "image":self.image,
-                "imageAspectRatio":self.imageAspectRatio,
-                "control":self.control,
-                "label": self.label,
-                "font": self.font,
-                "script": self.script,
-                "flat":self.flat,
-                "flipped":self.flipped,
-                "rotated":self.rotated,
-                "scale":self.scale,
-                "group":self.group,
-                "svgpath":self.svgpath}
-
-    def fromJson(self, data):
-        self.position = data["position"]
-        self.background = data["background"]
-        self.foreground = data["foreground"]
-        self.image = data["image"]
-        self.imageAspectRatio = data["imageAspectRatio"]
-        self.control = data["control"]
-        self.label = data["label"]
-        self.font = data.get("font", "")
-        self.script = data["script"]
-        self.flat = data["flat"]
-        self.flipped = data["flipped"]
-        self.rotated = data["rotated"]
-        self.scale = data["scale"]
-        self.group = data["group"]
-        self.svgpath = data["svgpath"]   
-
-class Picker(object):
-    def __init__(self, name=""):
-        self.name = name
-        self.items = []
-        self.size = [0,0]
-        self.scale = 1
-
-    def copy(self, other):
-        self.name = other.name
-        self.items = [item.duplicate() for item in other.items]
-        self.size = other.size[:]
-        self.scale = other.scale
-
-    def isEmpty(self):
-        return len(self.items)==0
-
-    def duplicate(self):
-        a = Picker()
-        a.copy(self)
-        return a
-
-    def toJson(self):
-        return {"name": self.name, "items": [item.toJson() for item in self.items], "size":self.size, "scale": self.scale}
-
-    def fromJson(self, data):
-        self.name = data["name"]
-        self.size = data["size"]
-        self.scale = data.get("scale", 1)
-
-        self.items = []        
-        for d in data["items"]:
-            item = PickerItem()
-            item.fromJson(d)
-            self.items.append(item)        
-
 class ScaleAnchorItem(QGraphicsItem):
     Size = 12
     def __init__(self, **kwargs):
@@ -395,8 +299,8 @@ class ScaleAnchorItem(QGraphicsItem):
             painter.drawPath(self.shape())
 
     def mouseMoveEvent(self, event):
-        deltaX = int((event.scenePos().x()-self.dragPos.x()) / ScaleSize)
-        deltaY = int((event.scenePos().y()-self.dragPos.y()) / ScaleSize)
+        deltaX = int((event.scenePos().x()-self.dragPos.x()) / 5)
+        deltaY = int((event.scenePos().y()-self.dragPos.y()) / 5)
 
         selection = self.scene().sortedSelection()
         for i, item in enumerate(selection):
@@ -455,18 +359,26 @@ class SceneItem(QGraphicsItem):
         return QVector2D(self.pickerItem.scale[0], self.pickerItem.scale[1])
 
     def updateShape(self):
-        scaleX = self.pickerItem.scale[0]/ScaleSize * 1.0/ScaleSize + 1
-        scaleY = self.pickerItem.scale[1]/ScaleSize * 1.0/ScaleSize + 1
+        scaleX = self.pickerItem.scale[0]/25 + 1
+        scaleY = self.pickerItem.scale[1]/25 + 1
 
         self.prepareGeometryChange()
         self.painterPath = getPainterPath(self.pickerItem.svgpath, scaleX, scaleY, self.pickerItem.flipped[0], self.pickerItem.flipped[1], self.pickerItem.rotated)        
 
         self.imagePixmap = QPixmap()
-        if os.path.exists(os.path.expandvars(self.pickerItem.image)):
+        pixmap = None
+        if self.pickerItem.image.startswith("/9j/"): # image bytes
+            pixmap = str2pixmap(self.pickerItem.image)
+        else:
+            imagePath = os.path.expandvars(self.pickerItem.image)
+            if os.path.exists(imagePath):
+                pixmap = QPixmap()
+                pixmap.load(imagePath)
+
+        if pixmap:
             aspectRatio = {0:Qt.IgnoreAspectRatio, 1:Qt.KeepAspectRatio, 2: Qt.KeepAspectRatioByExpanding}
-            boundingRect = self.painterPath.boundingRect()
-            self.imagePixmap.load(self.pickerItem.image)
-            self.imagePixmap = self.imagePixmap.scaled(boundingRect.width(), boundingRect.height(), aspectRatio[self.pickerItem.imageAspectRatio])
+            boundingRect = self.painterPath.boundingRect()            
+            self.imagePixmap = pixmap.scaled(boundingRect.width(), boundingRect.height(), aspectRatio[self.pickerItem.imageAspectRatio], Qt.SmoothTransformation)
             self.setZValue(-1)
 
         self.updateScaleAnchor()
@@ -476,8 +388,8 @@ class SceneItem(QGraphicsItem):
             self.scene().undoAppendForSelected("scale")
 
         if scale:
-            self.pickerItem.scale[0] = clamp(scale.x(),-ScaleSize**2+2, scale.x())
-            self.pickerItem.scale[1] = clamp(scale.y(),-ScaleSize**2+2, scale.y())
+            self.pickerItem.scale[0] = clamp(scale.x(),-25+2, scale.x())
+            self.pickerItem.scale[1] = clamp(scale.y(),-25+2, scale.y())
 
         self.updateShape()
 
@@ -582,7 +494,7 @@ class SceneItem(QGraphicsItem):
                     painter.setFont(font)
 
                 fontMetrics = QFontMetrics(painter.font())
-                textSize = fontMetrics.size(0, self.pickerItem.label)
+                textSize = fontMetrics.boundingRect(self.pickerItem.label)
                 
                 painter.drawText(boundingRect.center()-QPoint(textSize.width()/2, -textSize.height()/3), self.pickerItem.label)
 
@@ -1494,8 +1406,11 @@ class View(QGraphicsView):
             if isinstance(itemAt, ScaleAnchorItem):
                 return
 
-            if itemAt and (not itemAt.pickerItem.image or (itemAt.pickerItem.image and not (self.scene().isImagesLocked or not self.scene().editMode()))):
-                return
+            if itemAt and\
+               (not itemAt.pickerItem.image or
+                (itemAt.pickerItem.image and
+                 not (self.scene().isImagesLocked or not self.scene().editMode()))): 
+               return
 
             self._startDrag = event.pos()
 
@@ -1758,38 +1673,34 @@ class ImageWidget(QLabel):
     def __init__(self, imagePath="", **kwargs):
         super(ImageWidget, self).__init__(**kwargs)
     
-        self.imagePath = ""
+        self.originalPixmap = QPixmap()
         self.setCursor(Qt.PointingHandCursor)
-        self.updateImage(imagePath)
+        self.updatePixmap(None)
 
     def mousePressEvent(self, event):  
         if event.buttons() == Qt.LeftButton:
             fileDialog = QFileDialog.getOpenFileName(self, "Select image", "", "*.jpg;*.png")
             filePath, _ = fileDialog
             if filePath:
-                self.updateImage(filePath)
+                pixmap = QPixmap()
+                pixmap.load(filePath)
+                self.updatePixmap(pixmap)
                 self.imageChanged.emit()
+
         elif event.buttons() == Qt.RightButton:
             ok = QMessageBox.question(self, "Picker", "Remove image?", QMessageBox.Yes and QMessageBox.No, QMessageBox.Yes) == QMessageBox.Yes
             if ok:
-                self.updateImage("")
+                self.updatePixmap(None)
                 self.imageChanged.emit()
 
-    def updateImage(self, imagePath):
-        if not imagePath:
+    def updatePixmap(self, pixmap):
+        if pixmap:
+            self.setPixmap(pixmap.scaled(50,50))
+            self.originalPixmap = pixmap
+        else:
+            self.originalPixmap = QPixmap()
             self.clear()
-
-        self.imagePath = os.path.expandvars(imagePath)
-
-        if not self.pixmap():
-            if os.path.exists(imagePath):
-                pixmap = QPixmap()
-                pixmap.load(imagePath)
-                pixmap = pixmap.scaled(50,50)
-                self.setPixmap(pixmap)
-            else:
-                self.clear()
-                self.setText("(No image)")
+            self.setText("(No image)")
 
 class PropertiesWidget(QWidget):
     somethingChanged = Signal()
@@ -1953,7 +1864,7 @@ class PropertiesWidget(QWidget):
         self.shapeWidget.updateShape(self.pickerItem.svgpath, self.pickerItem.background)
         self.backgroundColorWidget.color = QColor(self.pickerItem.background)
         self.foregroundColorWidget.color = QColor(self.pickerItem.foreground)
-        self.imageWidget.updateImage(self.pickerItem.image)
+        self.imageWidget.updatePixmap(str2pixmap(self.pickerItem.image))
         self.imageAspectRatioWidget.setCurrentIndex(self.pickerItem.imageAspectRatio)
         self.imageAspectRatioWidget.setEnabled(True if self.pickerItem.image else False)
 
@@ -1975,7 +1886,7 @@ class PropertiesWidget(QWidget):
 
     def imageChanged(self):
         if self._updating:return
-        self.pickerItem.image = self.imageWidget.imagePath
+        self.pickerItem.image = pixmap2str(self.imageWidget.originalPixmap)
         self.imageAspectRatioWidget.setEnabled(True if self.pickerItem.image else False)
 
         self.changedProperties.append("image")
