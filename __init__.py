@@ -622,35 +622,9 @@ class SceneItem(QGraphicsItem):
             self._ignoreMouseRelease = True
 
     def mouseMoveEvent(self, event):
-        '''
-        if shift:        
-            view = scene.views()[0]
+        if self.pickerItem.image and self.scene().isImagesLocked:
+            return
 
-            p = event.scenePos()
-            rect = enlargeRect(scene.selectionBoundingRect, 25)
-            foundItems = [item for item in scene.items(rect) if isinstance(item, SceneItem) and not item.isSelected()]
-            if foundItems:
-                center = foundItems[0].pos() + foundItems[0].boundingRect().center()
-                event.setPos(event.pos().x(), self.mapFromScene(center).y())
-                #event.setLastPos(self.mapFromScene(center))
-                event.setScenePos(event.scenePos().x(), center.y())
-                #event.setLastScenePos(center)
-
-                #event.setScreenPos(view.mapToGlobal(view.mapFromScene(center)))
-                #event.setLastScreenPos(view.mapToGlobal(view.mapFromScene(center)))
-
-                event.setButtonDownPos(button, self.mapFromScene(center))
-                #event.setButtonDownScenePos(button, center)
-                #event.setButtonDownScreenPos(button, view.mapToGlobal(view.mapFromScene(center)))
-
-        else:            
-            event.setScreenPos(roundTo(event.screenPos()))
-            event.setScenePos(roundTo(event.scenePos()))
-            event.setPos(roundTo(event.pos()))
-            event.setButtonDownPos(button, roundTo(event.buttonDownPos(button)))
-            event.setButtonDownScenePos(button, roundTo(event.buttonDownScenePos(button)))
-            event.setButtonDownScreenPos(button, roundTo(event.buttonDownScreenPos(button)))
-        '''
         super(SceneItem, self).mouseMoveEvent(event)
 
     def mousePressEvent(self, event): # exec python script
