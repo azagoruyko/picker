@@ -403,6 +403,7 @@ class SceneItem(QGraphicsItem):
             self.scaleAnchorItem.setVisible(value and scene.editMode())
 
             if (not scene.editMode() or scene.isImagesLocked) and self.pickerItem.image:
+                cmds.select(cl=True)
                 value = False
             elif not scene.editMode() and self.pickerItem.script: # do not select script items
                 value = False
