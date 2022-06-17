@@ -8,7 +8,8 @@ Youtube: https://www.youtube.com/watch?v=TJN8QXDixv8
 ## Features
 * Highly customizable.<br>
   Animators can add new controls, import pickers and combine them.
-* Image backgrounds.
+* Image backgrounds. <br>
+  Stored in picker files.
 * Multiple selections.
 * Double click selection groups.
 * Custom python scripts.
@@ -28,3 +29,11 @@ picker.pickerWindow.show()
 ## Custom shapes
 All shapes are kept in *shapes.json* as SVG-path items. So you can use any SVG-path editor to draw what you need and insert it here in *shape.json*.
 Currently picker doesn't support A/a command for paths.
+
+## Animschool picker converter
+Use `animschool_converter.py` script for this purpose.
+Run the following.
+```python
+import picker.animschool_converter
+picker.animschool_converter.convertFromPkrFile("D:/somepicker.pkr")
+```
