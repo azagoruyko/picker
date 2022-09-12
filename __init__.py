@@ -545,7 +545,11 @@ class SceneItem(QGraphicsItem):
             if event.buttons() == Qt.LeftButton:            
                 self.moveBy(1,1)
 
-                exec(self.pickerItem.script.replace("@", self.scene().mayaParameters.namespace))
+                pm.undoInfo(ock=True)
+                try:
+                    exec(self.pickerItem.script.replace("@", self.scene().mayaParameters.namespace))
+                finally:
+                    pm.undoInfo(cck=True)
         else:
             super(SceneItem, self).mousePressEvent(event)
 
