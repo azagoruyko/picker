@@ -1,7 +1,7 @@
 # Picker
 Yet another flexible picker for animators in Maya.<br>
 
-![picker1](https://user-images.githubusercontent.com/9614751/159113298-dfef29ba-7764-4967-a8bb-c7c52469614d.PNG)
+![image](https://user-images.githubusercontent.com/9614751/226429549-0582ae4a-92db-4aa0-a97c-8719848fdd07.png)
 
 Youtube: https://www.youtube.com/watch?v=TJN8QXDixv8
 
@@ -17,13 +17,13 @@ Youtube: https://www.youtube.com/watch?v=TJN8QXDixv8
   This works for widgets that have a single control.
 * Undo support.
 * Multiple pickers.
-* Scalable and pannable.
+* Scalable
 
 ## How to run
 Add *picker* folder to your script path and run as
 ```python
 import picker
-picker.pickerWindow.show()
+picker.restoreFromMayaNode() # restore pickers from current scene or create a new one
 ```
 
 ## Custom shapes
