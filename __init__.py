@@ -10,40 +10,148 @@ from Qt.QtGui import *
 from Qt.QtCore import *
 from Qt.QtWidgets import *
 
-try:
-    import pymel.core as pm
-    import pymel.api as api
-    import maya.cmds as cmds
+import pymel.core as pm
+import pymel.api as api
+import maya.cmds as cmds
 
-    from shiboken2 import wrapInstance
-    mayaMainWindow = wrapInstance(long(api.MQtUtil.mainWindow()), QMainWindow)
-    from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
-
-    IsInsideMaya = True
-except ImportError:
-    IsInsideMaya = False
-
-from classes import *    
+from shiboken2 import wrapInstance
+mayaMainWindow = wrapInstance(long(api.MQtUtil.mainWindow()), QMainWindow)
+from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 
 NiceColors = ["#E6D0DE", "#CDA2BE", "#B5739D", "#E1D5E7", "#C3ABD0", "#A680B8", "#D4E1F5", "#A9C4EB", "#7EA6E0", "#D5E8D4", "#9AC7BF", "#67AB9F", "#D5E8D4", "#B9E0A5", "#97D077", "#FFF2CC", "#FFE599", "#FFD966", "#FFF4C3", "#FFCE9F", "#FFB570", "#F8CECC", "#F19C99", "#EA6B66"]
 getNiceColor = lambda:NiceColors[random.randrange(len(NiceColors))]
 
 if sys.version_info.major > 2:
     RootDirectory = os.path.dirname(__file__)
-else:    
+else:
     RootDirectory = os.path.dirname(__file__.decode(sys.getfilesystemencoding()))
 
 PickerWindows = []
 Clipboard = []
 
+def color2hex(r,g,b):
+    return "#%0.2x%0.2x%0.2x"%(r,g,b)
+
+def size2scale(s):
+    return 25 * (s/100.0 - 1.0)
+
+class PickerItem(object):
+    def __init__(self, svgpath="M 0 0 h 100 v 100 h -100 v -100 Z"):
+        self.position = [0,0]
+        self.background = "#eaa763" #getNiceColor()
+        self.foreground = "#000000"
+        self.image = "" # pixmap bytes
+        self.imageAspectRatio = 2 # 0-IgnoreAspectRatio, 1-KeepAspectRatio, 2-KeepAspectRatioByExpanding
+        self.control = ""
+        self.label = ""
+        self.font = ""
+        self.script = ""
+        self.flat = True # draw specular gradient when True
+        self.flipped = [False, False]
+        self.rotated = False
+        self.scale = [-15, -15] # steps of grid size
+        self.group = "" # used in double clicks
+        self.svgpath = svgpath
+
+    def copy(self, other):
+        self.position = other.position[:]
+        self.background = other.background
+        self.foreground = other.foreground
+        self.image = other.image
+        self.imageAspectRatio = other.imageAspectRatio
+        self.control = other.control
+        self.label = other.label
+        self.font = other.font
+        self.script = other.script
+        self.flat = other.flat
+        self.flipped = other.flipped[:]
+        self.rotated = other.rotated
+        self.scale = other.scale[:]
+        self.group = other.group
+        self.svgpath = other.svgpath
+
+    def duplicate(self):
+        a = PickerItem()
+        a.copy(self)
+        return a
+
+    def toJson(self):
+        return {"position":self.position,
+                "background":self.background,
+                "foreground":self.foreground,
+                "image":self.image,
+                "imageAspectRatio":self.imageAspectRatio,
+                "control":self.control,
+                "label": self.label,
+                "font": self.font,
+                "script": self.script,
+                "flat":self.flat,
+                "flipped":self.flipped,
+                "rotated":self.rotated,
+                "scale":self.scale,
+                "group":self.group,
+                "svgpath":self.svgpath}
+
+    def fromJson(self, data):
+        self.position = data["position"]
+        self.background = data["background"]
+        self.foreground = data["foreground"]
+        self.image = data["image"]
+        self.imageAspectRatio = data["imageAspectRatio"]
+        self.control = data["control"]
+        self.label = data["label"]
+        self.font = data.get("font", "")
+        self.script = data["script"]
+        self.flat = data["flat"]
+        self.flipped = data["flipped"]
+        self.rotated = data["rotated"]
+        self.scale = data["scale"]
+        self.group = data["group"]
+        self.svgpath = data["svgpath"]
+
+class Picker(object):
+    def __init__(self, name=""):
+        self.name = name
+        self.items = []
+        self.size = [0,0]
+        self.scale = 1
+
+    def copy(self, other):
+        self.name = other.name
+        self.items = [item.duplicate() for item in other.items]
+        self.size = other.size[:]
+        self.scale = other.scale
+
+    def isEmpty(self):
+        return len(self.items)==0
+
+    def duplicate(self):
+        a = Picker()
+        a.copy(self)
+        return a
+
+    def toJson(self):
+        return {"name": self.name, "items": [item.toJson() for item in self.items], "size":self.size, "scale": self.scale}
+
+    def fromJson(self, data):
+        self.name = data["name"]
+        self.size = data["size"]
+        self.scale = data.get("scale", 1)
+
+        self.items = []
+        for d in data["items"]:
+            item = PickerItem()
+            item.fromJson(d)
+            self.items.append(item)
+
 def pixmap2str(pixmap):
     ba = QByteArray()
     buff = QBuffer(ba)
-    buff.open(QIODevice.WriteOnly) 
+    buff.open(QIODevice.WriteOnly)
     pixmap.save(buff, "JPG", 100)
     return base64.b64encode(ba.data()).decode("utf8")
 
-def str2pixmap(pixmapStr):    
+def str2pixmap(pixmapStr):
     ba = QByteArray.fromRawData(base64.b64decode(pixmapStr.encode("utf8")))
     pixmap = QPixmap()
     pixmap.loadFromData(ba, "JPG")
@@ -54,7 +162,7 @@ def mayaVisibilityCallback(attr, data):
     if not pm.getAttr(attr):
         item.isMayaControlHidden = True
         item.update()
-    else: # check children                    
+    else: # check children
         for ch in data["hierarchy"]:
             if not ch.v.get():
                 item.isMayaControlHidden = True
@@ -64,41 +172,36 @@ def mayaVisibilityCallback(attr, data):
         item.update()
 
 def mayaSelectionChangedCallback(mayaParameters, data):
-    def splitNamespace(n): 
-        parts = n.split(":") 
+    def splitNamespace(n):
+        parts = n.split(":")
         return ":".join(parts[:-1])+":" or "", parts[-1]
 
     if not data:
         return
 
-    scene = data.values()[0].scene()
+    scene = data.values()[0][0].scene()
 
-    mayaParameters.ignoreDoubleSelection = True
-    scene.ignoreSelectionChanged = True
-    scene.clearSelection()     
+    scene.blockSignals(True)
+    scene.clearSelection()
 
     ls = cmds.ls(sl=True)
-    #print("maya selection", ls)
     for node in ls:
-        item = data.get(node) # found available item for the control
-        if item:
+        items = data.get(node,[]) # found available item for the control
+        for item in items:
             item.setSelected(True)
 
-    scene.ignoreSelectionChanged = False
+    scene.blockSignals(False)
     scene.updateSortedSelection()
-
-    mayaParameters.ignoreDoubleSelection = False
 
 def splitString(s):
     return re.split("[ ,;]+", s)
 
 def roundTo(n, k=5):
-    def _round(n):
-        return int(n/k)*k
+    _round = lambda n: int(n/k)*k
 
     T = type(n)
 
-    if T in  [int, float]:
+    if T in [int, float]:
         return _round(n)
 
     elif T in [QPoint, QPointF]:
@@ -108,7 +211,7 @@ def roundTo(n, k=5):
         return T(_round(n.x()), _round(n.y()), _round(n.width()), _round(n.height()))
 
 def clamp(val, mn, mx):
-    if val < mn: 
+    if val < mn:
         return mn
     elif val > mx:
         return mx
@@ -138,14 +241,14 @@ def parsePath(path):
                 commandNumbers.append(float(currentNumber)*sign)
                 sign = 1
                 currentNumber = ""
-            
+
             if currentCommand:
                 commands.append((currentCommand, commandNumbers))
-                
+
             commandNumbers = []
             currentCommand = c
-            currentNumber = ""          
-            sign = 1 
+            currentNumber = ""
+            sign = 1
 
         elif c in ["0","1","2","3","4","5","6","7","8","9","."]:
             currentNumber += c
@@ -156,8 +259,8 @@ def parsePath(path):
                 currentNumber = ""
 
             sign = -1 if c == "-" else 1
-                
-    commands.append((currentCommand, commandNumbers))  
+
+    commands.append((currentCommand, commandNumbers))
     return commands
 
 def getPainterPath(path, scaleX=1, scaleY=1, flipX=False, flipY=False, rotate=False):
@@ -177,7 +280,7 @@ def getPainterPath(path, scaleX=1, scaleY=1, flipX=False, flipY=False, rotate=Fa
         if rotate:
             cmdInversion = {"h":"v", "H":"V", "v":"h", "V": "H"}
             cmd = cmdInversion.get(cmd, cmd)
-            
+
             if cmd not in ["h", "H", "v", "V"]:
                 newNumbers = [0]*len(numbers)
                 for i in range(0, len(numbers), 2):
@@ -232,7 +335,7 @@ def getPainterPath(path, scaleX=1, scaleY=1, flipX=False, flipY=False, rotate=Fa
             painterPath.quadTo(cp.x()+numbers[0]*scaleX, cp.y()+numbers[1]*scaleY, cp.x()+numbers[2]*scaleX, cp.y()+numbers[3]*scaleY)
 
         elif cmd in ["Z", "z"]:
-            painterPath.closeSubpath()            
+            painterPath.closeSubpath()
         '''
         elif cmd == "A":
             start = complex(cp.x(), cp.y())
@@ -243,8 +346,8 @@ def getPainterPath(path, scaleX=1, scaleY=1, flipX=False, flipY=False, rotate=Fa
             N = 25
             for i in range(N):
                 p = arc.point(i/float(N-1))
-                painterPath.lineTo(QPointF(p.real, p.imag))                
-        
+                painterPath.lineTo(QPointF(p.real, p.imag))
+
         elif cmd == "a":
             start = complex(cp.x(), cp.y())
             rad = complex(numbers[0]*scaleX, numbers[1]*scaleY)
@@ -254,7 +357,7 @@ def getPainterPath(path, scaleX=1, scaleY=1, flipX=False, flipY=False, rotate=Fa
             N = 25
             for i in range(N):
                 p = arc.point(i/float(N-1))
-                painterPath.lineTo(QPointF(p.real, p.imag))   
+                painterPath.lineTo(QPointF(p.real, p.imag))
         '''
 
     rect = painterPath.boundingRect()
@@ -294,7 +397,7 @@ class ScaleAnchorItem(QGraphicsItem):
     def paint(self, painter, option, widget=None):
         painter.setPen(Qt.NoPen)
 
-        painter.setBrush(QBrush(QColor(255,255,255, 150)))        
+        painter.setBrush(QBrush(QColor(255,255,255, 150)))
         if self.parentItem().isSelected():
             painter.drawPath(self.shape())
 
@@ -334,13 +437,15 @@ class SceneItem(QGraphicsItem):
 
         self.scaleAnchorItem = ScaleAnchorItem()
         self.scaleAnchorItem.setVisible(False)
-        self.scaleAnchorItem.setParentItem(self)        
+        self.scaleAnchorItem.setParentItem(self)
 
         self.isHover = False
 
-        self._ignoreMouseRelease = False
+        self._isDragging = False
+        self._startPos = None
+        self._lastPos = None
 
-        self.setFlags(QGraphicsItem.ItemIsSelectable | QGraphicsItem.ItemSelectedChange | QGraphicsItem.ItemSendsGeometryChanges| QGraphicsItem.ItemIsMovable)
+        self.setFlags(QGraphicsItem.ItemIsSelectable | QGraphicsItem.ItemSelectedChange | QGraphicsItem.ItemSendsGeometryChanges | QGraphicsItem.ItemIsMovable)
         self.setAcceptHoverEvents(True)
 
         self.updateScaleAnchor()
@@ -355,17 +460,18 @@ class SceneItem(QGraphicsItem):
         self.pickerItem.copy(other.pickerItem)
         self.updateShape()
 
-    def unitScale(self): 
+    def unitScale(self):
         return QVector2D(self.pickerItem.scale[0], self.pickerItem.scale[1])
 
     def updateShape(self):
-        scaleX = self.pickerItem.scale[0]/25 + 1
-        scaleY = self.pickerItem.scale[1]/25 + 1
+        scaleX = self.pickerItem.scale[0] / 25 + 1
+        scaleY = self.pickerItem.scale[1] / 25 + 1
 
         self.prepareGeometryChange()
-        self.painterPath = getPainterPath(self.pickerItem.svgpath, scaleX, scaleY, self.pickerItem.flipped[0], self.pickerItem.flipped[1], self.pickerItem.rotated)        
+        self.painterPath = getPainterPath(self.pickerItem.svgpath, scaleX, scaleY, self.pickerItem.flipped[0], self.pickerItem.flipped[1], self.pickerItem.rotated)
 
         self.imagePixmap = QPixmap()
+
         pixmap = None
         if self.pickerItem.image.startswith("/9j/"): # image bytes
             pixmap = str2pixmap(self.pickerItem.image)
@@ -377,13 +483,13 @@ class SceneItem(QGraphicsItem):
 
         if pixmap:
             aspectRatio = {0:Qt.IgnoreAspectRatio, 1:Qt.KeepAspectRatio, 2: Qt.KeepAspectRatioByExpanding}
-            boundingRect = self.painterPath.boundingRect()            
+            boundingRect = self.painterPath.boundingRect()
             self.imagePixmap = pixmap.scaled(boundingRect.width(), boundingRect.height(), aspectRatio[self.pickerItem.imageAspectRatio], Qt.SmoothTransformation)
             self.setZValue(-1)
 
         self.updateScaleAnchor()
 
-    def setUnitScale(self, scale): 
+    def setUnitScale(self, scale):
         if self.scene():
             self.scene().undoAppendForSelected("scale")
 
@@ -394,31 +500,24 @@ class SceneItem(QGraphicsItem):
         self.updateShape()
 
     def itemChange(self, change, value):
-        if not self.scene():
-            return super(SceneItem, self).itemChange(change, value)
-
         scene = self.scene()
+
+        if not scene:
+            return super(SceneItem, self).itemChange(change, value)
 
         if change == QGraphicsItem.ItemSelectedChange:
             self.scaleAnchorItem.setVisible(value and scene.editMode())
 
             if (not scene.editMode() or scene.isImagesLocked) and self.pickerItem.image:
-                cmds.select(cl=True)
+                pm.select(cl=True)
                 value = False
-            elif not scene.editMode() and self.pickerItem.script: # do not select script items
-                value = False
-
-            #print("itemChange", value, self)
 
         elif change == QGraphicsItem.ItemPositionChange:
             scene.undoAppendForSelected("move")
-
-            shift = QApplication.keyboardModifiers() & Qt.ShiftModifier
-            if not shift:
-                value.setX(roundTo(value.x()))
-                value.setY(roundTo(value.y()))
-
+            value = roundTo(value)
             self.pickerItem.position = [value.x(), value.y()]
+
+            scene.mayaParameters.pickerIsModified = True
 
         return super(SceneItem, self).itemChange(change, value)
 
@@ -454,10 +553,10 @@ class SceneItem(QGraphicsItem):
                 else:
                     brushStyle = Qt.LinearGradientPattern
                     gradient = QLinearGradient(boundingRect.topLeft(),boundingRect.center())
-                    gradient.setColorAt(0.4, QColor(255,255,255))     
+                    gradient.setColorAt(0.4, QColor(255,255,255))
                     gradient.setColorAt(0.8, QColor(background).lighter(133) if self.isHover else background)
 
-                if IsInsideMaya and not self.scene().editMode():
+                if not self.scene().editMode():
                     if self.isMayaControlHidden:
                         background = "#666666"
                         pen.setColor("#333333")
@@ -471,7 +570,7 @@ class SceneItem(QGraphicsItem):
                 painter.setPen(pen)
                 if gradient:
                     painter.setBrush(gradient)
-                else:                    
+                else:
                     brush = QBrush(QColor(background))
                     brush.setStyle(brushStyle)
                     painter.setBrush(brush)
@@ -484,7 +583,7 @@ class SceneItem(QGraphicsItem):
             # label
             if self.pickerItem.label:
                 painter.setPen(QColor(self.pickerItem.foreground))
-                
+
                 if self.pickerItem.font:
                     font = QFont()
                     font.fromString(self.pickerItem.font)
@@ -496,8 +595,7 @@ class SceneItem(QGraphicsItem):
 
                 fontMetrics = QFontMetrics(painter.font())
                 textSize = fontMetrics.boundingRect(self.pickerItem.label)
-                
-                painter.drawText(boundingRect.center()-QPoint(textSize.width()/2, -textSize.height()/3), self.pickerItem.label)
+                painter.drawText(boundingRect.center() - QPoint(textSize.width()/2, -textSize.height()/3), self.pickerItem.label)
 
         if self.isSelected():
             painter.setBrush(Qt.NoBrush)
@@ -515,7 +613,7 @@ class SceneItem(QGraphicsItem):
     def hoverLeaveEvent(self, event):
         self.isHover = False
         self.unsetCursor()
-        self.update()    
+        self.update()
 
     def mouseDoubleClickEvent(self, event): # select group of controls
         super(SceneItem, self).mouseDoubleClickEvent(event)
@@ -525,64 +623,88 @@ class SceneItem(QGraphicsItem):
             found = scene.findItemsByProperty("group", self.pickerItem.group)
 
             oldSelection = scene.sortedSelection()
-            scene.ignoreSelectionChanged = True
+            scene.blockSignals(True)
 
             for item in found:
                 item.setSelected(True)
-            scene.ignoreSelectionChanged = False
+
+            scene.blockSignals(False)
             scene.selectionChangedCallback()
 
-            self._ignoreMouseRelease = True
+    def mousePressEvent(self, event):
+        scene = self.scene()
+
+        if event.button() == Qt.LeftButton and not scene.editMode() and self.pickerItem.script: # execute script
+            pm.undoInfo(ock=True)
+            try:
+                exec(self.pickerItem.script.replace("@", scene.mayaParameters.namespace))
+            finally:
+                pm.undoInfo(cck=True)
+
+        elif event.button() in [Qt.LeftButton, Qt.MiddleButton] : # handle selection
+            shift = event.modifiers()  & Qt.ShiftModifier # add to selection
+            ctrl = event.modifiers() & Qt.ControlModifier # remove from selection
+
+            # when we press on a selected item with middle mouse, don't clear selection
+            if not (event.button() == Qt.MiddleButton and self.isSelected()):
+                # Deselect all other items in the same scene
+                if not shift and not ctrl:
+                    scene.blockSignals(True)
+                    for item in scene.selectedItems():
+                        if item != self:
+                            item.setSelected(False)
+                    scene.blockSignals(False)
+
+                if ctrl:
+                    self.setSelected(False)
+                elif ctrl and shift:
+                    self.setSelected(True)
+                elif shift:
+                    self.setSelected(not self.isSelected())
+                else:
+                    self.setSelected(True)
+
+        if event.button() == Qt.MiddleButton:
+            for item in scene.items():
+                if isinstance(item, SceneItem) and item.isSelected():
+                    item._isDragging = True
+                    item._lastPos = event.scenePos()
+                    item._startPos = item.pos()
 
     def mouseMoveEvent(self, event):
-        if self.pickerItem.image and self.scene().isImagesLocked:
-            return
+        shift = event.modifiers() & Qt.ShiftModifier
 
-        super(SceneItem, self).mouseMoveEvent(event)
-
-    def mousePressEvent(self, event): # exec python script
-        if not self.scene().editMode() and self.pickerItem.script:
-            if event.buttons() == Qt.LeftButton:            
-                self.moveBy(1,1)
-
-                pm.undoInfo(ock=True)
-                try:
-                    exec(self.pickerItem.script.replace("@", self.scene().mayaParameters.namespace))
-                finally:
-                    pm.undoInfo(cck=True)
-        else:
-            super(SceneItem, self).mousePressEvent(event)
+        if self._isDragging:
+            scene = self.scene()
+            for item in scene.items():
+                if isinstance(item, SceneItem) and item._isDragging:
+                    delta = item._lastPos - event.scenePos()
+                    newPos = item._startPos - delta
+                    item.setPos(newPos)# if shift else roundTo(newPos))
 
     def mouseReleaseEvent(self, event):
-        if self._ignoreMouseRelease:
-            self._ignoreMouseRelease = False
-            return
+        if event.button() == Qt.MiddleButton:
+            scene = self.scene()
+            for item in scene.items():
+                if isinstance(item, SceneItem) and item.isSelected():
+                    item._isDragging = False
 
-        if not self.scene().editMode() and self.pickerItem.script:
-            self.moveBy(-1,-1)
-        elif not self.scene().editMode() and len(splitString(self.pickerItem.control))>1: # skip mouseReleaseEvent constuctor for multi control widgets
-            return
-        else:
-            super(SceneItem, self).mouseReleaseEvent(event)
-
-            lastOp = self.scene().getUndoLastOperation()
-            if lastOp and lastOp[0].startswith("move"):
-                self.scene().undoNewBlock()
+            if scene.mayaParameters.pickerIsModified:
+                scene.mayaParameters.pickerWindow.saveToMayaNode()
 
 class Scene(QGraphicsScene):
     editModeChanged = Signal(bool)
 
     def __init__(self, propertiesWidget, mayaParameters, **kwargs):
-        super(Scene, self).__init__(**kwargs)        
+        super(Scene, self).__init__(**kwargs)
 
         self.propertiesWidget = propertiesWidget
         self.propertiesWidget.somethingChanged.connect(self.updateItemsProperties)
         self.mayaParameters = mayaParameters
 
-        self.ignoreSelectionChanged = False
         self.isImagesLocked = False
 
-        self._editMode = True
+        self._editMode = False
         self._sortedSelection = []
 
         self.undoEnabled = True
@@ -663,56 +785,48 @@ class Scene(QGraphicsScene):
                     self._sortedSelection.append(sel)
 
         else:
-            del self._sortedSelection[:]            
+            del self._sortedSelection[:]
 
-    def selectionChangedCallback(self):        
-        if self.ignoreSelectionChanged:
-            return
-
+    def selectionChangedCallback(self):
         self.updateSortedSelection()
-        
+
         if self.editMode() and self.sortedSelection():
-            self.propertiesWidget.setEnabled(True)                
+            self.propertiesWidget.setEnabled(True)
             self.propertiesWidget.updateProperties(self.sortedSelection()[-1].pickerItem)
         else:
             self.propertiesWidget.setEnabled(False)
 
-        if IsInsideMaya and not self.editMode() and not self.mayaParameters.ignoreDoubleSelection:
-            #print("selectionChanged")
-            nodes = []
+        if not self.editMode():
+            nodes = set()
             for item in self.sortedSelection():
-                itemNodes = [self.mayaParameters.namespace + ctrl for ctrl in splitString(item.pickerItem.control)]
-                itemNodes = [node for node in itemNodes if cmds.objExists(node)]
-                nodes += itemNodes
+                for ctrl in splitString(item.pickerItem.control):
+                    node = ctrl if ctrl.startswith(':') else self.mayaParameters.namespace+ctrl
+                    if cmds.objExists(node):
+                        nodes.add(node)
 
-            if nodes:
-                cmds.select(nodes)
-            else:
-                cmds.select(cl=True)
+            cmds.select(nodes)
 
     def sortedSelection(self):
         return self._sortedSelection[:]
 
     def beginEditBlock(self):
         self.undoEnabled = False
-        self.ignoreSelectionChanged = True
 
     def endEditBlock(self):
         self.updateSortedSelection()
         self.undoEnabled = True
-        self.ignoreSelectionChanged = False
 
     def undoNewBlock(self):
         self.undoAppend("newBlock", None)
-    
+
     def undoAppendForSelected(self, name):
-        if not self.undoEnabled or not self.editMode() or not self.sortedSelection():
+        if not self.undoEnabled or not self.sortedSelection() or not self.editMode():
             return
 
         funcList = []
         for item in self.sortedSelection():
-            f = lambda item=item, state=item.pickerItem.duplicate(): (item.pickerItem.copy(state),                                                                       
-                                                                      item.updateShape(),              
+            f = lambda item=item, state=item.pickerItem.duplicate(): (item.pickerItem.copy(state),
+                                                                      item.updateShape(),
                                                                       item.setPos(state.position[0], state.position[1]))
             funcList.append(f)
         undoFunc = lambda funcList=funcList: [f() for f in funcList]
@@ -720,16 +834,16 @@ class Scene(QGraphicsScene):
         self.undoAppend(name, undoFunc, str([id(item) for item in self.sortedSelection()]))
 
     def undoAppend(self, name, undoFunc, operationId=None): # always append into undoStack when operationId is None
-        if self.undoEnabled and self.editMode():
-            lastOp = self.getUndoLastOperation()
+        if not self.undoEnabled or not self.editMode():
+            return
 
-            cmd = "%s %s"%(name, operationId)
-            if operationId is not None and lastOp and lastOp[0] == cmd:
-                #lastOp = (cmd, undoFunc)
-                pass
-            else:
-                #print("undoAppend new", name)
-                self._undoStack.append((cmd, undoFunc))
+        lastOp = self.getUndoLastOperation()
+
+        cmd = "%s %s"%(name, operationId)
+        if operationId is not None and lastOp and lastOp[0] == cmd:
+            pass
+        else:
+            self._undoStack.append((cmd, undoFunc))
 
     def getUndoLastOperation(self):
         return self._undoStack[-1] if self._undoStack else None
@@ -737,20 +851,19 @@ class Scene(QGraphicsScene):
     def flushUndo(self):
         self._undoStack = []
 
-    def keyPressEvent(self, event):        
+    def keyPressEvent(self, event):
         ctrl = event.modifiers() & Qt.ControlModifier
 
         if ctrl and event.key() == Qt.Key_Z:
             if not self._undoStack:
                 print("Selection undo is empty")
             else:
-                self.undoEnabled = False 
+                self.undoEnabled = False
                 while True and self._undoStack:
                     cmd, undoFunc = self._undoStack.pop()
 
                     if callable(undoFunc):
                         undoFunc()
-                        #print("undo: "+cmd)
                         break
 
                 self.undoEnabled = True
@@ -758,34 +871,28 @@ class Scene(QGraphicsScene):
         else:
             super(Scene, self).keyPressEvent(event)
 
-    def updateItemsFlags(self):
-        for item in self.items():
-            if isinstance(item, SceneItem):
-                if self.editMode():
-                    item.setFlags(QGraphicsItem.ItemIsSelectable | QGraphicsItem.ItemSelectedChange | QGraphicsItem.ItemIsMovable | QGraphicsItem.ItemSendsGeometryChanges)
-                else:
-                    item.setFlags(QGraphicsItem.ItemIsSelectable)
-
-    def editMode(self): 
+    def editMode(self):
         return self._editMode
 
     def setEditMode(self, v):
         if v == self._editMode:
             return
 
+        for item in self.selectedItems():
+            if isinstance(item, SceneItem):
+                item.scaleAnchorItem.setVisible(v)
+
         self._editMode = v
-        
-        self.updateItemsFlags()
         self.editModeChanged.emit(v)
 
 class View(QGraphicsView):
     pickerLoaded = Signal(object, bool) # picker, asImport (True, False)
+    somethingDropped = Signal()
 
     def __init__(self, scene, **kwargs):
-        super(View, self).__init__(scene, **kwargs)        
-        
+        super(View, self).__init__(scene, **kwargs)
+
         self._startDrag = None
-        self._isPanning = False
         self.rubberBand = None
         self.selectionBeforeRubberBand = []
 
@@ -793,244 +900,37 @@ class View(QGraphicsView):
         self.setContextMenuPolicy(Qt.DefaultContextMenu)
 
         self.setMouseTracking(True)
-        #self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        #self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
+        self.setAcceptDrops(True)
 
         self.setSceneRect(QRect(0,0, 300, 400))
 
-    def contextMenuEvent(self, event):
-        menu = QMenu(self)
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasText():
+            event.acceptProposedAction()
 
-        if not self.scene().editMode():
-            editAction = QAction("Edit", self)
-            editAction.triggered.connect(lambda _=None: self.switchEditMode(True))
-            menu.addAction(editAction)
+    def dropEvent(self, event):
+        mimeData = event.mimeData()
+        if mimeData.hasText():
+            nodes = [pm.PyNode(n).stripNamespace() for n in mimeData.text().split()]
 
-            menu.popup(event.globalPos())
-        else:
-            exitEditAction = QAction("Edit done\tESC", self)
-            exitEditAction.triggered.connect(lambda _=None: self.switchEditMode(False))
-            menu.addAction(exitEditAction)
+            self.scene().clearSelection()
+            self.insertItems(self.mapToScene(event.pos()), nodes)
+            event.acceptProposedAction()
+            self.somethingDropped.emit()
 
-        fileMenu = QMenu("File", self)
-        newAction = QAction("New", self)
-        newAction.triggered.connect(lambda _=None:self.newPicker())
-        fileMenu.addAction(newAction)
-
-        newWindowAction = QAction("New window\tCTRL-N", self)
-        newWindowAction.triggered.connect(lambda _=None:self.newPicker(window=True))
-        fileMenu.addAction(newWindowAction)
-
-        saveAction = QAction("Save\tCTRL-S", self)
-        saveAction.triggered.connect(self.savePicker)
-        fileMenu.addAction(saveAction)
-
-        openAction = QAction("Open\tCTRL-O", self)
-        openAction.triggered.connect(lambda _=None:self.loadPicker())
-        fileMenu.addAction(openAction)
-
-        importAction = QAction("Import\tCTRL-I", self)
-        importAction.triggered.connect(lambda _=None: self.loadPicker(asImport=True))
-        fileMenu.addAction(importAction)
-
-        exportAction = QAction("Export selected", self)
-        exportAction.triggered.connect(lambda _=None: self.savePicker(selected=True))
-        fileMenu.addAction(exportAction)
-
-        fileMenu.addSeparator()
-
-        showClosedAction = QAction("Show closed windows", self)
-        showClosedAction.triggered.connect(lambda _=None: self.showClosedWindows())
-        fileMenu.addAction(showClosedAction)
-
-        restoreFromMayaAction = QAction("Restore from Maya", self)
-        restoreFromMayaAction.triggered.connect(lambda _=None: restoreFromMayaNode())
-        fileMenu.addAction(restoreFromMayaAction)
-
-        menu.addMenu(fileMenu)
-
-        frameAllAction = QAction("Frame all\tf", self)
-        frameAllAction.triggered.connect(lambda _=None:self.frameAll())
-        menu.addAction(frameAllAction)
-
-        if self.scene().editMode():
-            menu.addSeparator()
-            insertAction = QAction("Insert\tINS", self)
-            insertAction.triggered.connect(lambda _=None:self.insertItem())
-            menu.addAction(insertAction)
-
-            removeAction = QAction("Remove\tDEL", self)
-            removeAction.triggered.connect(lambda _=None:self.removeItems())
-            menu.addAction(removeAction)
-
-            duplicateAction = QAction("Duplicate\tCTRL-D", self)
-            duplicateAction.triggered.connect(lambda _=None:self.duplicateItems())
-            menu.addAction(duplicateAction)   
-
-            clipboardMenu = QMenu("Clipboard", self)
-            copyAction = QAction("Copy\tCTRL-C", self)
-            copyAction.triggered.connect(lambda _=None:self.clipboardCopyItems())
-            clipboardMenu.addAction(copyAction)
-
-            cutAction = QAction("Cut\tCTRL-X", self)
-            cutAction.triggered.connect(lambda _=None:self.clipboardCutItems())
-            clipboardMenu.addAction(cutAction)
-
-            pasteAction = QAction("Paste\tCTRL-V", self)
-            pasteAction.triggered.connect(lambda _=None:self.clipboardPasteItems())
-            pasteAction.setEnabled(True if Clipboard else False)
-            clipboardMenu.addAction(pasteAction)
-
-            menu.addMenu(clipboardMenu)
-
-            menu.addSeparator()     
-
-            for label, orientation in [("Make row","row"), ("Make column", "column"), ("Make left diagonal", "ldiag"), ("Make right diagonal", "rdiag")]:
-                orientMenu = QMenu(label, self)
-                keys = {"row": "\t1", "column": "\t2", "ldiag":"\t3", "rdiag": "\t4"}
-                for label, size in [("Tiny", 5), ("Small"+keys.get(orientation,""), 10), ("Medium", 20), ("Large",40)]:
-                    action = QAction(label, self)
-                    action.triggered.connect(lambda _=None, orientation=orientation, size=size: self.makeRowColumnFromSelected(orientation, size))
-                    orientMenu.addAction(action)            
-                menu.addMenu(orientMenu)
-
-            alignMenu = QMenu("Align", self)
-            for label, edge in [("Left\t[", "left"), ("Right\t]", "right"), ("Top\t_", "top"), ("HCenter\t=", "hcenter"), ("VCenter\t-", "vcenter")]:
-                action = QAction(label, self)
-                action.triggered.connect(lambda _=None, edge=edge: self.alignItems(edge))
-                alignMenu.addAction(action)
-
-            snapToGridAction = QAction("Snap to grid\t.", self)
-            snapToGridAction.triggered.connect(lambda _=None: self.snapToGridItems())
-            alignMenu.addAction(snapToGridAction)
-            menu.addMenu(alignMenu)
-
-            flipPositionMenu = QMenu("Flip", self)
-            for typ in ["left", "right", "up", "down"]:
-                action = QAction(typ.capitalize(), self)
-                action.triggered.connect(lambda _=None, t=typ: self.flipItems(t))
-                flipPositionMenu.addAction(action)            
-            menu.addMenu(flipPositionMenu)    
-            
-            sizeMenu = QMenu("Size", self)
-            for label, size in [("Tiny", -21), ("Small\tALT-1", -19), ("Meduim\tALT-2", -15), ("Large", -5)]:
-                action = QAction(label, self)
-                action.triggered.connect(lambda _=None, size=size: self.setItemsSize(size))
-                sizeMenu.addAction(action)
-
-            sizeMenu.addSeparator()
-            sameSizeAction = QAction("As first selected\t*", self)
-            sameSizeAction.triggered.connect(lambda _=None:self.setSameSize())
-            sizeMenu.addAction(sameSizeAction)
-            menu.addMenu(sizeMenu)
-
-            rotateAction = QAction("Rotate", self)
-            rotateAction.triggered.connect(lambda _=None: self.rotateItems())
-            menu.addAction(rotateAction)
-
-            toolsMenu = QMenu("Tools", self)
-            replaceAction = QAction("Replace in control/group", self)
-            replaceAction.triggered.connect(lambda _=None: self.replaceAction())
-            toolsMenu.addAction(replaceAction)
-            menu.addMenu(toolsMenu)
-
-            menu.addSeparator()
-
-            lockImagesAction = QAction("Lock images\tCTRL-L", self)
-            lockImagesAction.setCheckable(True)
-            lockImagesAction.setChecked(self.scene().isImagesLocked)
-            lockImagesAction.triggered.connect(lambda _=None: self.lockImages())
-            menu.addAction(lockImagesAction)
-
-            selectAllAction = QAction("Select all", self)
-            selectAllAction.triggered.connect(lambda _=None:self.selectAllItems())
-            menu.addAction(selectAllAction)   
-
-        menu.popup(event.globalPos())
-
-    def showClosedWindows(self):
-        for w in PickerWindows:
-            w.show()
-
-    def clipboardCopyItems(self):
-        global Clipboard
-        Clipboard = []
-        for item in self.scene().sortedSelection()[::-1]:
-            Clipboard.append(item.pickerItem.duplicate())
-
-    def clipboardCutItems(self):
-        self.clipboardCopyItems()
-        self.removeItems()
-
-    def clipboardPasteItems(self):
-        global Clipboard
-        if Clipboard:
-            scene = self.scene()
-            oldSelection = scene.sortedSelection()
-            
-            scene.clearSelection()
-
-            newItems = []
-            for pickerItem in Clipboard:
-                item = SceneItem(pickerItem)
-
-                scene.beginEditBlock()
-                scene.addItem(item)
-                item.setPos(pickerItem.position[0], pickerItem.position[1])    
-                item.setSelected(True)
-                scene.endEditBlock()
-
-                newItems.append(item)
-
-            undoFunc = lambda items=newItems, scene=scene, selection=oldSelection: ([scene.removeItem(item) for item in items],
-                                                                                    scene.clearSelection(), 
-                                                                                    [item.setSelected(True) for item in oldSelection])
-            scene.undoAppend("paste", undoFunc)
-
-            scene.propertiesWidget.updateProperties(newItems[-1].pickerItem)
-            Clipboard = []  
-
-    def selectAllItems(self):
-        oldSelection = self.scene().sortedSelection()
-        scene = self.scene()
-
-        undoFunc = lambda scene=scene, items=oldSelection: (scene.clearSelection(), [item.setSelected(True) for item in items])
-        scene.undoAppend("selection", undoFunc, str([id(item) for item in oldSelection]))
-
-        scene.beginEditBlock()
-        for item in scene.items():
-            item.setSelected(True)
-        scene.endEditBlock()
-
-    def snapToGridItems(self, items=None):
-        for sel in items or self.scene().sortedSelection():
-            sel.setPos(roundTo(sel.pos()))
-
-    def replaceAction(self):
-        replace, ok = QInputDialog.getText(self, "Replace", "Replace inside control/group (old=new)", QLineEdit.Normal, "L_=R_")
-        if ok and replace:
-            replaceItems = replace.split("=")
-            if len(replaceItems)==2:
-                old, new = replaceItems
-                selection = self.scene().sortedSelection()
-                for item in selection:
-                    item.pickerItem.control = item.pickerItem.control.replace(old,new)
-                    item.pickerItem.group = item.pickerItem.group.replace(old,new)
-
-                self.scene().propertiesWidget.updateProperties(selection[-1].pickerItem)
-            else:
-                QMessageBox.critical(self, "Replace", "Invalid replace format. Must be 'old=new', i.e L_=R_")
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasText():
+            event.acceptProposedAction()            
 
     def newPicker(self, window=False):
         if not window:
             ok = QMessageBox.question(self, "Picker", "Clear current and make new picker?", QMessageBox.Yes and QMessageBox.No, QMessageBox.Yes) == QMessageBox.Yes
             if ok:
                 self.setTransform(QTransform()) # reset scale
-                scene = self.scene()
-                scene.setEditMode(True)
-                scene.clear()
-                scene.flushUndo()
+                self.scene().setEditMode(True)
+                self.scene().clear()
+                self.scene().flushUndo()
         else:
             PickerWindow().show()
 
@@ -1065,7 +965,38 @@ class View(QGraphicsView):
                 picker.fromJson(json.load(f))
             return picker
 
-    def loadPicker(self, picker=None, asImport=False): 
+    def selectAllItems(self):
+        oldSelection = self.scene().sortedSelection()
+        scene = self.scene()
+
+        undoFunc = lambda scene=scene, items=oldSelection: (scene.clearSelection(), [item.setSelected(True) for item in items])
+        scene.undoAppend("selection", undoFunc, str([id(item) for item in oldSelection]))
+
+        scene.beginEditBlock()
+        for item in scene.items():
+            item.setSelected(True)
+        scene.endEditBlock()
+
+    def snapToGridItems(self, items=None):
+        for sel in items or self.scene().sortedSelection():
+            sel.setPos(roundTo(sel.pos()))
+
+    def replaceInNames(self):
+        replace, ok = QInputDialog.getText(self, "Replace", "Replace inside control/group (old=new)", QLineEdit.Normal, "L_=R_")
+        if ok and replace:
+            replaceItems = replace.split("=")
+            if len(replaceItems)==2:
+                old, new = replaceItems
+                selection = self.scene().sortedSelection()
+                for item in selection:
+                    item.pickerItem.control = item.pickerItem.control.replace(old,new)
+                    item.pickerItem.group = item.pickerItem.group.replace(old,new)
+
+                self.scene().propertiesWidget.updateProperties(selection[-1].pickerItem)
+            else:
+                QMessageBox.critical(self, "Replace", "Invalid replace format. Must be 'old=new', i.e L_=R_")
+
+    def loadPicker(self, picker=None, asImport=False):
         if not picker:
             picker = self.loadPickerFromFile()
         if not picker:
@@ -1085,17 +1016,15 @@ class View(QGraphicsView):
         for pickerItem in picker.items:
             item = SceneItem(pickerItem)
             scene.addItem(item)
-        
+
             item.setPos(item.pickerItem.position[0], item.pickerItem.position[1])
-        
+
             if asImport:
                 item.setSelected(True)
 
             newItems.append(item)
 
         scene.undoEnabled = True
-
-        scene.updateItemsFlags()
 
         if not asImport: # clear undo when just open new picker
             scene.flushUndo()
@@ -1108,15 +1037,15 @@ class View(QGraphicsView):
 
         else: # track undo
 
-            undoFunc = lambda scene=scene, items=newItems, oldSelection=oldSelection: ([scene.removeItem(item) for item in items], 
-                                                                                        scene.clearSelection(), 
+            undoFunc = lambda scene=scene, items=newItems, oldSelection=oldSelection: ([scene.removeItem(item) for item in items],
+                                                                                        scene.clearSelection(),
                                                                                         [item.setSelected(True) for item in oldSelection])
-            scene.undoAppend("loadPicker", undoFunc)                
+            scene.undoAppend("loadPicker", undoFunc)
             self.pickerLoaded.emit(picker, True)
 
     def flipItems(self, edge):
         boundingRect = QRectF()
-        
+
         selected = self.scene().sortedSelection()
 
         for item in selected: # find bounding box of selected items
@@ -1147,7 +1076,7 @@ class View(QGraphicsView):
     def lockImages(self):
         if not self.scene().editMode():
             return
-            
+
         self.scene().isImagesLocked = not self.scene().isImagesLocked
 
     def removeItems(self):
@@ -1159,52 +1088,88 @@ class View(QGraphicsView):
 
         if not self.scene().editMode():
             return
-            
+
         keepItems = []
         for item in self.scene().sortedSelection():
             keepItems.append(item.pickerItem.duplicate())
             self.scene().removeItem(item)
 
-        undoFunc = lambda scene=self.scene(), items=keepItems: undoRemoveItems(scene, items) 
+        undoFunc = lambda scene=self.scene(), items=keepItems: undoRemoveItems(scene, items)
         self.scene().undoAppend("remove", undoFunc)
 
-    def insertItem(self):
-        if not self.scene().editMode():
-            return
-            
-        newPos = roundTo(self.mapToScene(self.mapFromGlobal(QCursor.pos())))
+    def clipboardCopyItems(self):
+        global Clipboard
+        Clipboard = []
+        for item in self.scene().sortedSelection()[::-1]:
+            Clipboard.append(item.pickerItem.duplicate())
+
+    def clipboardCutItems(self):
+        self.clipboardCopyItems()
+        self.removeItems()
+
+    def clipboardPasteItems(self):
+        global Clipboard
+        if Clipboard:
+            oldSelection = self.scene().sortedSelection()
+
+            self.scene().clearSelection()
+
+            newItems = []
+            for pickerItem in Clipboard:
+                item = SceneItem(pickerItem)
+
+                self.scene().beginEditBlock()
+                self.scene().addItem(item)
+                item.setPos(pickerItem.position[0], pickerItem.position[1])
+                item.setSelected(True)
+                self.scene().endEditBlock()
+
+                newItems.append(item)
+
+            undoFunc = lambda items=newItems, scene=self.scene, selection=oldSelection: ([scene.removeItem(item) for item in items],
+                                                                                         scene.clearSelection(),
+                                                                                         [item.setSelected(True) for item in oldSelection])
+            self.scene().undoAppend("paste", undoFunc)
+
+            self.scene().propertiesWidget.updateProperties(newItems[-1].pickerItem)
+            Clipboard = []
+
+    def insertItems(self, position=None, controls=None):
+        position = roundTo(position or self.mapToScene(self.mapFromGlobal(QCursor.pos())))
+
+        if not controls:
+            controls = cmds.ls(sl=True) or [""] # single empty item when no selection
 
         shapeBrower = ShapeBrowserWidget(parent=self)
         shapeBrower.exec_()
-        if shapeBrower.selectedSvgpath:            
-            item = SceneItem(PickerItem(shapeBrower.selectedSvgpath))
-
+        if shapeBrower.selectedSvgpath:
             scene = self.scene()
-            oldSelection = scene.sortedSelection()
 
+            items = []
+            oldSelection = scene.sortedSelection()
             scene.beginEditBlock()
-            scene.addItem(item)
-            item.setPos(newPos)    
-            item.setSelected(True)
+            for ctrl in controls:
+                pickerItem = PickerItem(shapeBrower.selectedSvgpath)
+                pickerItem.control = ctrl
+
+                item = SceneItem(pickerItem)
+                scene.addItem(item)
+                item.setPos(position)
+                item.setSelected(True)
+
+                items.append(item)
             scene.endEditBlock()
 
-            undoFunc = lambda item=item, scene=scene, selection=oldSelection: (scene.removeItem(item), 
-                                                                               scene.clearSelection(), 
-                                                                               [item.setSelected(True) for item in oldSelection])
+            self.makeRowColumnFromSelected("column", 5)
+
+            undoFunc = lambda items=items, scene=scene, selection=oldSelection: ([scene.removeItem(item) for item in items],
+                                                                                 scene.clearSelection(),
+                                                                                 [item.setSelected(True) for item in oldSelection])
             scene.undoAppend("insert", undoFunc)
 
-            scene.propertiesWidget.updateProperties(item.pickerItem)
-
-    def switchEditMode(self, v):
-        self.setSceneRect(enlargeRect(self.scene().itemsBoundingRect(), 10))
-
-        self.scene().setEditMode(v)
-        self.scene().propertiesWidget.setEnabled(v)
+            scene.propertiesWidget.updateProperties(items[-1].pickerItem)
 
     def rotateItems(self):
-        if not self.scene().editMode():
-            return
-
         selected = self.scene().sortedSelection()
         for item in selected:
             item.pickerItem.rotated = not item.pickerItem.rotated
@@ -1214,16 +1179,10 @@ class View(QGraphicsView):
             self.scene().propertiesWidget.updateProperties(selected[-1].pickerItem)
 
     def setItemsSize(self, size):
-        if not self.scene().editMode():
-            return
-        
         for item in self.scene().sortedSelection():
             item.setUnitScale(QVector2D(size, size))
 
     def duplicateItems(self):
-        if not self.scene().editMode():
-            return
-
         scene = self.scene()
         selected = scene.sortedSelection()
 
@@ -1244,15 +1203,12 @@ class View(QGraphicsView):
 
             scene.endEditBlock()
 
-            undoFunc = lambda scene=scene, items=newItems, oldSelection=selected: ([scene.removeItem(item) for item in items], 
-                                                                                   scene.clearSelection(), 
+            undoFunc = lambda scene=scene, items=newItems, oldSelection=selected: ([scene.removeItem(item) for item in items],
+                                                                                   scene.clearSelection(),
                                                                                    [item.setSelected(True) for item in oldSelection])
             self.scene().undoAppend("duplicate", undoFunc)
 
     def makeRowColumnFromSelected(self, orientation, size):
-        if not self.scene().editMode():
-            return
-
         selected = self.scene().sortedSelection()
         if len(selected) > 1:
             self.scene().undoNewBlock()
@@ -1273,18 +1229,12 @@ class View(QGraphicsView):
                 prev +=1
 
     def setSameSize(self):
-        if not self.scene().editMode():
-            return
-
         selected = self.scene().sortedSelection()
         if len(selected) > 1:
             for item in selected[1:]:
                 item.setUnitScale(selected[0].unitScale())
 
     def alignItems(self, edge):
-        if not self.scene().editMode():
-            return
-
         selected = self.scene().sortedSelection()
         if selected and len(selected) > 1:
             self.scene().undoNewBlock()
@@ -1317,94 +1267,15 @@ class View(QGraphicsView):
         ctrl = event.modifiers() & Qt.ControlModifier
         alt = event.modifiers() & Qt.AltModifier
 
-        if ctrl and event.key() == Qt.Key_D:
-            self.duplicateItems()
-
-        elif event.key() == Qt.Key_Escape:
-            self.switchEditMode(False)
-
-        elif ctrl and event.key() == Qt.Key_S:
-            self.savePicker()
-
-        elif ctrl and event.key() == Qt.Key_O:
-            self.loadPicker()
-
-        elif ctrl and event.key() == Qt.Key_I:
-            self.loadPicker(asImport=True)
-
-        elif ctrl and event.key() == Qt.Key_L:
-            self.lockImages()
-
-        elif ctrl and event.key() == Qt.Key_N:
-            self.newPicker(window=True)
-
-        elif ctrl and event.key() == Qt.Key_C:
-            self.clipboardCopyItems()
-
-        elif ctrl and event.key() == Qt.Key_X:
-            self.clipboardCutItems()
-
-        elif ctrl and event.key() == Qt.Key_V:
-            self.clipboardPasteItems()
-
-        elif event.key() == Qt.Key_Equal:
-            self.alignItems("hcenter")
-
-        elif event.key() == Qt.Key_Minus:
-            self.alignItems("vcenter")
-
-        elif event.key() == Qt.Key_BracketLeft:
-            self.alignItems("left")
-
-        elif event.key() == Qt.Key_BracketRight:
-            self.alignItems("right")
-
-        elif event.key() == Qt.Key_Underscore:
-            self.alignItems("top")
-
-        elif event.key() == Qt.Key_Period:# dot
-            self.snapToGridItems()
-
-        elif event.key() == Qt.Key_Asterisk:
-            self.setSameSize()
-
-        elif alt and event.key() == Qt.Key_1:
-            self.setItemsSize(-19)
-
-        elif alt and event.key() == Qt.Key_2:
-            self.setItemsSize(-15)
-
-        elif event.key() == Qt.Key_1:
-            self.makeRowColumnFromSelected("row", 10)
-
-        elif event.key() == Qt.Key_2:
-            self.makeRowColumnFromSelected("column", 10)
-
-        elif event.key() == Qt.Key_3:
-            self.makeRowColumnFromSelected("ldiag", 10)
-
-        elif event.key() == Qt.Key_4:
-            self.makeRowColumnFromSelected("rdiag", 10)
-
-        elif event.key() == Qt.Key_Insert:
-            self.insertItem()
-
-        elif event.key() == Qt.Key_Delete:
-            self.removeItems()
-
-        elif event.key() == Qt.Key_F: # frame all
-            self.frameAll()
+        if event.key() == Qt.Key_Escape:
+            self.scene().setEditMode(False)
 
         else:
             super(View, self).keyPressEvent(event)
 
     def mousePressEvent(self, event):
         if event.buttons() == Qt.LeftButton:
-            if event.modifiers() & Qt.ShiftModifier:
-                event.setModifiers(Qt.ControlModifier)
-
             self.selectionBeforeRubberBand = self.scene().sortedSelection()
-            super(View, self).mousePressEvent(event)
 
             itemAt = self.itemAt(event.pos())
             # check if it's a simple SceneItem or image with conditions
@@ -1414,111 +1285,74 @@ class View(QGraphicsView):
             if itemAt and\
                (not itemAt.pickerItem.image or
                 (itemAt.pickerItem.image and
-                 not (self.scene().isImagesLocked or not self.scene().editMode()))): 
+                 not (self.scene().isImagesLocked or not self.scene().editMode()))):
+               super(View, self).mousePressEvent(event) # pass forward to items
                return
 
             self._startDrag = event.pos()
 
-            if not self.rubberBand:            
+            if not self.rubberBand:
                 self.rubberBand = MyRubberBand(parent=self.viewport())
 
             self.rubberBand.setGeometry(QRect(self._startDrag, QSize()))
             self.rubberBand.show()
-
-        elif event.buttons() == Qt.MiddleButton:
-            self._isPanning = True
-            self._panningPos = event.pos()
 
         else:
             super(View, self).mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
         super(View, self).mouseMoveEvent(event)
+
         if self.rubberBand:
             self.rubberBand.setGeometry(QRect(self._startDrag, event.pos()).normalized())
-
-        if self._isPanning:            
-            self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - (event.x() - self._panningPos.x()))
-            self.verticalScrollBar().setValue(self.verticalScrollBar().value() - (event.y() - self._panningPos.y()))              
-            self._panningPos = event.pos()
 
     def mouseReleaseEvent(self, event):
         ctrl = event.modifiers() & Qt.ControlModifier
         shift = event.modifiers() & Qt.ShiftModifier
 
-        self._isPanning = False
+        if event.button() == Qt.LeftButton:
+            if self.rubberBand:
+                rect = self.mapToScene(self.rubberBand.geometry().normalized()).boundingRect()
+                if rect.width() > 3 and rect.height() > 3:
+                    scene = self.scene()
+                    oldSelection = scene.selectedItems()
 
-        if shift:
-            event.setModifiers(Qt.ControlModifier)
+                    scene.blockSignals(True)
 
-        super(View, self).mouseReleaseEvent(event)
+                    area = QPainterPath()
+                    area.addRect(rect)
+                    scene.setSelectionArea(area)
 
-        if self.rubberBand:
-            rect = self.mapToScene(self.rubberBand.geometry().normalized()).boundingRect()
-            if rect.width() > 5 and rect.height() > 5:
-                scene = self.scene()
-                oldSelection = scene.selectedItems()
+                    newSelected = scene.selectedItems()
+                    scene.clearSelection()
 
-                scene.beginEditBlock()
-
-                area = QPainterPath()
-                area.addRect(rect)
-                scene.setSelectionArea(area)
-
-                newSelected = scene.selectedItems()
-                scene.clearSelection()
-
-                for sel in oldSelection:
-                    sel.setSelected(True)
-
-                for sel in newSelected:
-                    if shift and ctrl:
-                        sel.setSelected(True)
-                    elif shift:
-                        sel.setSelected(not sel.isSelected())
-                    elif ctrl:
-                        sel.setSelected(False)
-                    else:
+                    for sel in oldSelection:
                         sel.setSelected(True)
 
-                scene.endEditBlock()
-                scene.selectionChangedCallback()
+                    for sel in newSelected:
+                        if shift and ctrl:
+                            sel.setSelected(True)
+                        elif shift:
+                            sel.setSelected(not sel.isSelected())
+                        elif ctrl:
+                            sel.setSelected(False)
+                        else:
+                            sel.setSelected(True)
 
-                if self.selectionBeforeRubberBand:
-                    undoFunc = lambda scene=scene, items=self.selectionBeforeRubberBand[:]: (scene.clearSelection(), [item.setSelected(True) for item in items])
-                    scene.undoAppend("selection", undoFunc, str([id(item) for item in oldSelection]))
+                    scene.blockSignals(False)
+                    scene.selectionChangedCallback()
 
-            self.rubberBand.deleteLater()
-            self.rubberBand = None
+                    if self.selectionBeforeRubberBand:
+                        undoFunc = lambda scene=scene, items=self.selectionBeforeRubberBand[:]: (scene.clearSelection(), [item.setSelected(True) for item in items])
+                        scene.undoAppend("selection", undoFunc, str([id(item) for item in oldSelection]))
+
+                else: # clear selection
+                    self.scene().clearSelection()
+
+                self.rubberBand.deleteLater()
+                self.rubberBand = None
         else:
-            itemAt = self.itemAt(event.pos())
-            if isinstance(itemAt, SceneItem):
-                if shift and ctrl: 
-                    itemAt.setSelected(True)
-                elif shift:
-                    itemAt.setSelected(itemAt.isSelected()) # toggle
-                elif ctrl:
-                    itemAt.setSelected(False)
-
-    def drawBackground(self, painter, rect):
-        def isRectEqual(r1, r2, rough=1.5): 
-            return abs(r1.width() - r2.width())<rough and abs(r1.height() - r2.height())<rough
-
-        modifiers = QApplication.keyboardModifiers()
-        shift = modifiers & Qt.ShiftModifier
-
-        scene = self.scene()
-        if scene.editMode() and isRectEqual(rect, self.getViewportActualRect()):
-            painter.fillRect(self.sceneRect(), QColor(0,0,0,30))
-
-            editText = "EDIT"
-            painter.setPen(QColor(30,30,30))
-            font = painter.font()
-            font.setPointSize(50)
-            painter.setFont(font)
-            fontMetrics = QFontMetrics(font)
-            textSize = fontMetrics.size(0, editText)
-            painter.drawText(rect.right()-textSize.width(), rect.bottom()-10, editText)
+            super(View, self).mouseReleaseEvent(event)
 
     def getViewportScale(self):
         sx = QVector2D(self.transform().m11(), self.transform().m12()).length()
@@ -1534,10 +1368,11 @@ class View(QGraphicsView):
 
     def wheelEvent(self, event):
         ctrl = event.modifiers() & Qt.ControlModifier
-
-        delta = event.delta() / 120
-        scale = 1 + delta*0.1
-        self.scale(scale, scale)
+        alt = event.modifiers() & Qt.AltModifier
+        if ctrl or alt:
+            delta = event.delta() / 120
+            scale = 1 + delta*0.1
+            self.scale(scale, scale)
 
 class MyRubberBand(QWidget):
     def __init__(self, **kwargs):
@@ -1577,11 +1412,11 @@ class PickerItemWidget(QWidget):
     def paintEvent(self, event):
         painter = QPainter(self)
 
-        painter.setRenderHints(QPainter.Antialiasing)        
+        painter.setRenderHints(QPainter.Antialiasing)
 
         boundingRect = self.painterPath.boundingRect()
         grad = QLinearGradient(boundingRect.topLeft(), boundingRect.center())
-        grad.setColorAt(0.4, QColor(255,255,255))     
+        grad.setColorAt(0.4, QColor(255,255,255))
         grad.setColorAt(0.8, self.color)
 
         painter.setPen(self.color.darker(200))
@@ -1596,7 +1431,7 @@ class ShapeBrowserWidget(QDialog):
         self.selectedSvgpath = ""
 
         self.setWindowTitle("Select shape")
-        
+
         with open(RootDirectory+"/shapes.json", "r") as f:
             shapes = json.load(f)
 
@@ -1616,7 +1451,7 @@ class ShapeBrowserWidget(QDialog):
 
         scrollWidget.setLayout(gridLayout)
         layout = QVBoxLayout()
-        self.setLayout(layout)     
+        self.setLayout(layout)
         layout.addWidget(scrollArea)
 
     def somethingSelected(self, w):
@@ -1637,7 +1472,7 @@ class MySplitterHandle(QSplitterHandle):
 class MySplitter(QSplitter):
     def __init__(self, orientation, **kwargs):
         super(MySplitter, self).__init__(orientation, **kwargs)
-        self.setHandleWidth(3)        
+        self.setHandleWidth(3)
 
     def createHandle(self):
         return MySplitterHandle(self.orientation(), self)
@@ -1646,7 +1481,7 @@ class ColorWidget(QWidget):
     colorChanged = Signal()
     def __init__(self, color="#000000", **kwargs):
         super(ColorWidget, self).__init__(**kwargs)
-        
+
         self.color = QColor(color)
         self.setFixedSize(30,30)
         self.setCursor(Qt.PointingHandCursor)
@@ -1677,12 +1512,13 @@ class ImageWidget(QLabel):
     imageChanged = Signal()
     def __init__(self, imagePath="", **kwargs):
         super(ImageWidget, self).__init__(**kwargs)
-    
+
         self.originalPixmap = QPixmap()
+
         self.setCursor(Qt.PointingHandCursor)
         self.updatePixmap(None)
 
-    def mousePressEvent(self, event):  
+    def mousePressEvent(self, event):
         if event.buttons() == Qt.LeftButton:
             fileDialog = QFileDialog.getOpenFileName(self, "Select image", "", "*.jpg;*.png")
             filePath, _ = fileDialog
@@ -1754,10 +1590,10 @@ class PropertiesWidget(QWidget):
         self.labelWidget.returnPressed.connect(self.labelChanged)
         fontBtn = QPushButton("Font")
         fontBtn.clicked.connect(self.fontChanged)
-        labelLayout.addWidget(self.labelWidget)        
-        labelLayout.addWidget(fontBtn)        
+        labelLayout.addWidget(self.labelWidget)
+        labelLayout.addWidget(fontBtn)
         labelLayout.setStretch(0,1)
-        labelLayout.setStretch(1,0)        
+        labelLayout.setStretch(1,0)
 
         self.groupWidget = QLineEdit()
         self.groupWidget.editingFinished.connect(self.groupChanged)
@@ -1839,11 +1675,10 @@ class PropertiesWidget(QWidget):
             self.somethingChanged.emit()
 
     def addControlClicked(self):
-        if IsInsideMaya:
-            ls = cmds.ls(sl=True)
-            if ls:
-                self.controlWidget.setText(",".join([n.split(":")[-1] for n in ls]))
-                self.controlChanged()
+        ls = cmds.ls(sl=True)
+        if ls:
+            self.controlWidget.setText(",".join([n.split(":")[-1] for n in ls]))
+            self.controlChanged()
 
     def selectShape(self):
         shapeBrower = ShapeBrowserWidget(parent=self)
@@ -1863,7 +1698,7 @@ class PropertiesWidget(QWidget):
             return
 
         self.setEnabled(True)
-        
+
         self._updating = True
 
         self.shapeWidget.updateShape(self.pickerItem.svgpath, self.pickerItem.background)
@@ -1883,8 +1718,8 @@ class PropertiesWidget(QWidget):
         self.flippedWidget.flippedY.setChecked(self.pickerItem.flipped[1])
 
         self.rotatedWidget.setChecked(self.pickerItem.rotated)
-        self.scriptWidget.setText(self.pickerItem.script)        
-        
+        self.scriptWidget.setText(self.pickerItem.script)
+
         self._updating = False
         self.changedProperties = []
         self.update()
@@ -1907,13 +1742,13 @@ class PropertiesWidget(QWidget):
         if self._updating:return
         self.pickerItem.background = self.backgroundColorWidget.color.name() if self.backgroundColorWidget.color else ""
         self.changedProperties.append("background")
-        self.somethingChanged.emit()             
+        self.somethingChanged.emit()
 
     def foregroundChanged(self):
         if self._updating:return
         self.pickerItem.foreground = self.foregroundColorWidget.color.name()
         self.changedProperties.append("foreground")
-        self.somethingChanged.emit()     
+        self.somethingChanged.emit()
 
     def controlChanged(self):
         if self._updating:return
@@ -1921,12 +1756,12 @@ class PropertiesWidget(QWidget):
         if tmp != self.pickerItem.control:
             self.pickerItem.control = self.controlWidget.text()
             self.changedProperties.append("control")
-            self.somethingChanged.emit()             
+            self.somethingChanged.emit()
 
     def labelChanged(self):
         if self._updating:return
         tmp = self.labelWidget.text()
-        if tmp != self.pickerItem.label:        
+        if tmp != self.pickerItem.label:
             self.pickerItem.label = self.labelWidget.text()
             self.changedProperties.append("label")
             self.somethingChanged.emit()
@@ -1937,7 +1772,7 @@ class PropertiesWidget(QWidget):
         if tmp != self.pickerItem.group:
             self.pickerItem.group = self.groupWidget.text()
             self.changedProperties.append("group")
-            self.somethingChanged.emit()  
+            self.somethingChanged.emit()
 
     def flatChanged(self):
         if self._updating:return
@@ -1966,86 +1801,150 @@ class PropertiesWidget(QWidget):
 class MayaParameters(object):
     def __init__(self, namespace=":"):
         self.namespace = namespace
-        self.ignoreDoubleSelection = False
         self.attributeToSave = "" # within picker node
         self.doSaveInMayaNode = True
+        self.pickerIsModified = False # when picker is changed not in Edit Mode (like a position via middle mouse)
+        self.pickerWindow = None
 
-class PickerWindow(QFrame): # MayaQWidgetDockableMixin
+class PropertiesWindow(QDialog):
     def __init__(self):
-        super(PickerWindow, self).__init__(parent=mayaMainWindow if IsInsideMaya else None)
+        super(PropertiesWindow, self).__init__(parent=mayaMainWindow)
 
-        self.mayaVisibilityCallbackIds = []
-        self.mayaSelectionChangedCallbackId = []        
-        self.mayaParameters = MayaParameters()
+        self.setWindowTitle("Properties")
+        self.setGeometry(600, 200, 250, 400)
 
-        self._stayOnTopEnabled = False
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowCloseButtonHint & ~Qt.WindowContextHelpButtonHint)
+        self.setAttribute(Qt.WA_ShowWithoutActivating)
 
-        self.setWindowTitle("Picker")
-        self.setGeometry(600, 200, 600, 700)
-        
-        if IsInsideMaya:
-            self.setWindowFlags(self.windowFlags() | Qt.Window)
-        else:
-            self.setWindowFlags(self.windowFlags() | Qt.Window)
-
-        mainLayout = QVBoxLayout()
-        self.setLayout(mainLayout)
+        layout = QVBoxLayout()
+        self.setLayout(layout)
 
         self.propertiesWidget = PropertiesWidget()
         propsScrollArea = QScrollArea()
         propsScrollArea.setWidget(self.propertiesWidget)
         propsScrollArea.setWidgetResizable(True)
 
-        self.scene = Scene(self.propertiesWidget, self.mayaParameters)
+        layout.addWidget(propsScrollArea)
+
+class DraggableButton(QPushButton):
+    def __init__(self, title="", **kwargs):
+        super(DraggableButton, self).__init__(title, **kwargs)
+
+    def mousePressEvent(self, event):
+        if event.buttons() != Qt.MiddleButton:
+            super(DraggableButton, self).mousePressEvent(event)
+            return
+
+        mime_data = QMimeData()
+        mime_data.setText(" ".join(cmds.ls(sl=True)))
+
+        drag = QDrag(self)
+        drag.setMimeData(mime_data)
+        drag.exec_(Qt.MoveAction)
+
+    def dragEnterEvent(self, event):
+        event.accept()
+
+class PickerWindow(QFrame): # MayaQWidgetDockableMixin
+    def __init__(self):
+        super(PickerWindow, self).__init__(parent=mayaMainWindow)
+
+        self.mayaVisibilityCallbackIds = []
+        self.mayaSelectionChangedCallbackId = []
+        self.mayaParameters = MayaParameters()
+        self.mayaParameters.pickerWindow = self
+
+        self._stayOnTopEnabled = False
+
+        self.setWindowTitle("Picker")
+        self.setGeometry(600, 200, 400, 500)
+        self.setWindowFlags(self.windowFlags() | Qt.Window)
+
+        mainLayout = QVBoxLayout()
+        self.setLayout(mainLayout)
+
+        self.propertiesWindow = PropertiesWindow()
+
+        self.scene = Scene(self.propertiesWindow.propertiesWidget, self.mayaParameters)
         self.scene.editModeChanged.connect(self.editModeChanged)
-        
+
         self.view = View(self.scene)
         self.view.pickerLoaded.connect(self.pickerLoaded)
+        self.view.somethingDropped.connect(self.somethingDroppedOnView)
 
-        self.splitter = MySplitter(Qt.Horizontal)
-        self.splitter.addWidget(propsScrollArea)
-        self.splitter.addWidget(self.view)
-        self.splitter.setSizes([200, 600])
-        self.splitter.setStretchFactor(0,0)
-        self.splitter.setStretchFactor(1,1)
+        # tool buttons
+        toolsLayout = QHBoxLayout()
+        openBtn = QPushButton()
+        openBtn.setIcon(QIcon(RootDirectory+"/icons/open.png"))
+        openBtn.setToolTip("Open a picker")
+        openBtn.clicked.connect(self.view.loadPicker)
 
-        mainLayout.addWidget(self.splitter)
+        saveBtn = QPushButton()
+        saveBtn.setIcon(QIcon(RootDirectory+"/icons/save.png"))
+        saveBtn.setToolTip("Save current picker")
+        saveBtn.clicked.connect(self.view.savePicker)
 
-        hlayout = QHBoxLayout()
+        self.toggleEditModeBtn = QPushButton()
+        self.toggleEditModeBtn.setIcon(QIcon(RootDirectory+"/icons/edit.png"))
+        self.toggleEditModeBtn.setToolTip("Toggle edit mode")
+        self.toggleEditModeBtn.setShortcut("Space")
+        self.toggleEditModeBtn.clicked.connect(self.toggleEditMode)
+
+        makeControlBtn = DraggableButton()
+        makeControlBtn.setIcon(QIcon(RootDirectory+"/icons/plus.png"))
+        makeControlBtn.setToolTip("Add controls from selection")
+        makeControlBtn.clicked.connect(lambda: QMessageBox.information(self, "Picker", "Use drag and drop!"))
+
+        focusBtn = QPushButton()
+        focusBtn.setIcon(QIcon(RootDirectory+"/icons/focus.png"))
+        focusBtn.setToolTip("Frame all (F)")
+        focusBtn.setShortcut("F")
+        focusBtn.clicked.connect(self.view.frameAll)
+
+        self.pinBtn = QPushButton()
+        self.pinBtn.setIcon(QIcon(RootDirectory+"/icons/pin.png"))
+        self.pinBtn.setToolTip("Toggle stay of top")
+        self.pinBtn.clicked.connect(self.toggleStayOnTop)
+
+        toolsLayout.addWidget(openBtn)
+        toolsLayout.addWidget(saveBtn)
+        toolsLayout.addStretch()
+        toolsLayout.addWidget(makeControlBtn)
+        toolsLayout.addStretch()
+        toolsLayout.addWidget(self.pinBtn)
+        toolsLayout.addWidget(focusBtn)
+        toolsLayout.addWidget(self.toggleEditModeBtn)
 
         self.namespaceWidget = QComboBox()
         self.namespaceWidget.activated.connect(self.namespaceChanged)
         self.namespaceWidget.mousePressEvent = self.namespaceMousePressEvent
-        hlayout.addWidget(self.namespaceWidget)
 
-        self.pinBtn = QPushButton("Pin")
-        self.pinBtn.clicked.connect(self.toggleStayOnTop)
-        hlayout.addWidget(self.pinBtn)
-        hlayout.setStretch(0,1)
-        hlayout.setStretch(1,0)
-
-        mainLayout.addLayout(hlayout)
+        mainLayout.addWidget(self.createMenuBar())
+        mainLayout.addLayout(toolsLayout)
+        mainLayout.addWidget(self.view)
+        mainLayout.addWidget(self.namespaceWidget)
 
         self.updateNamespaces()
-
-        setStylesheet(self)
 
         global PickerWindows
         PickerWindows.append(self)
 
+    def somethingDroppedOnView(self):
+        self.scene.setEditMode(True)
+
+        if not self.scene.editMode():
+            self.uninstallCallbacks()
+            self.installCallbacks()
+
     def pickerLoaded(self, picker, asImport):
         if not asImport:
-            rect = self.geometry()
-            attributesSize = self.splitter.sizes()[0]
-            self.setGeometry(rect.x(),rect.y(),picker.size[0]+attributesSize+30,picker.size[1]+65) # +namespaceWidget.height
-
             if self.scene.editMode():
                 self.scene.setEditMode(False)
-            else:
-                self.installCallbacks()
+
+        self.saveToMayaNode()
+        self.installCallbacks()
 
     def updateNamespaces(self):
-        if not IsInsideMaya:return
         self.namespaceWidget.blockSignals(True)
 
         current = self.namespaceWidget.currentText()
@@ -2063,8 +1962,7 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
         self.namespaceWidget.blockSignals(False)
 
     def namespaceMousePressEvent(self, event):
-        if not IsInsideMaya:return
-        if event.buttons() in [Qt.LeftButton]:
+        if event.button() == Qt.LeftButton:
             self.updateNamespaces()
         QComboBox.mousePressEvent(self.namespaceWidget, event)
 
@@ -2072,28 +1970,38 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
         self.mayaParameters.namespace = self.namespaceWidget.itemText(idx)
         self.installCallbacks()
 
-    def editModeChanged(self, v):
-        for i in range(self.splitter.count()):
-            h = self.splitter.handle(i)
-            h.setEnabled(v)
-
-        attributesWidth = self.splitter.sizes()[0] if self.splitter.sizes()[0] > 0 else 200
+    def reposePropertyWindow(self):
         rect = self.geometry()
+        propGeometry = self.propertiesWindow.geometry()
+        self.propertiesWindow.setGeometry(rect.x()-propGeometry.width(), rect.y(), propGeometry.width(), rect.height())
+
+    def moveEvent(self, event):
+        self.reposePropertyWindow()
+
+    def resizeEvent(self, event):
+        self.reposePropertyWindow()
+
+    def toggleEditMode(self):
+        self.scene.setEditMode(False if self.scene.editMode() else True)
+
+        selection = self.scene.sortedSelection()
+        if selection:
+            self.scene.propertiesWidget.updateProperties(selection[0].pickerItem)
+
+    def editModeChanged(self, v):
+        self.toggleEditModeBtn.setStyleSheet("background-color: #dddd88" if v else "")
+
         if v:
-            self.setGeometry(rect.x()-attributesWidth, rect.y(), rect.width()+attributesWidth, rect.height())
-            self.splitter.setSizes([attributesWidth,600])
-            self.splitter.setHandleWidth(3)
+            self.propertiesWindow.show()
+            self.reposePropertyWindow()
             self.uninstallCallbacks()
         else:
-            self.setGeometry(rect.x()+attributesWidth, rect.y(), rect.width()-attributesWidth, rect.height())
-            self.splitter.setSizes([0,600])
-            self.splitter.setHandleWidth(0)
+            self.propertiesWindow.close()
             self.installCallbacks()
-
             self.saveToMayaNode()
 
-    def saveToMayaNode(self):        
-        if not IsInsideMaya or not self.mayaParameters.doSaveInMayaNode: 
+    def saveToMayaNode(self):
+        if not self.mayaParameters.doSaveInMayaNode:
             return
 
         pickerNode = "picker"
@@ -2102,31 +2010,175 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
         else:
             pickerNode = pm.PyNode(pickerNode)
 
-        def getUniqueAttributeName():
-            idx = 0
-            while pickerNode.hasAttr("data%d"%idx):
-                idx+=1
-            return "data%d"%idx
+        pickerIdx = PickerWindows.index(self)
 
         picker = self.view.toPicker()
         if not picker.isEmpty():
             if not self.mayaParameters.attributeToSave:
-                self.mayaParameters.attributeToSave = getUniqueAttributeName()
+                self.mayaParameters.attributeToSave = "data"+str(pickerIdx)
 
             if not pickerNode.hasAttr(self.mayaParameters.attributeToSave):
                 pickerNode.addAttr(self.mayaParameters.attributeToSave, dt="string")
 
-            pickerNode.attr(self.mayaParameters.attributeToSave).set(json.dumps(picker.toJson()))
+        pickerNode.attr(self.mayaParameters.attributeToSave).set(json.dumps(picker.toJson()))
+        self.mayaParameters.pickerIsModified = False
 
-            #print("save in maya", PickerWindows.index(self))
+    def createMenuBar(self):
+        menuBar = QMenuBar()
+
+        # file
+        fileMenu = QMenu("File", self)        
+        menuBar.addMenu(fileMenu)
+        
+        newAction = QAction("New", self)
+        newAction.triggered.connect(lambda _=None:self.view.newPicker(window=False))
+        fileMenu.addAction(newAction)
+
+        newWindowAction = QAction("New window", self)
+        newWindowAction.triggered.connect(lambda _=None:self.view.newPicker(window=True))
+        fileMenu.addAction(newWindowAction)
+
+        openAction = QAction("Open", self)
+        openAction.setShortcut("Ctrl+O")
+        openAction.triggered.connect(lambda _=None:self.view.loadPicker())
+        fileMenu.addAction(openAction)
+
+        saveAction = QAction("Save", self)
+        saveAction.setShortcut("Ctrl+S")
+        saveAction.triggered.connect(lambda _=None:self.view.savePicker())
+        fileMenu.addAction(saveAction)
+
+        fileMenu.addSeparator()
+
+        importAction = QAction("Import", self)
+        importAction.setShortcut("Ctrl+I")
+        importAction.triggered.connect(lambda _=None: self.view.loadPicker(asImport=True))
+        fileMenu.addAction(importAction)
+
+        exportAction = QAction("Export selected", self)
+        exportAction.setShortcut("Ctrl+E")
+        exportAction.triggered.connect(lambda _=None: self.view.savePicker(selected=True))
+        fileMenu.addAction(exportAction)
+
+        fileMenu.addSeparator()
+
+        restoreFromMayaAction = QAction("Restore from Maya", self)
+        restoreFromMayaAction.triggered.connect(restoreFromMayaNode)
+        fileMenu.addAction(restoreFromMayaAction)
+
+        # edit
+        editMenu = QMenu("Edit", self)
+
+        removeAction = QAction("Remove", self)
+        removeAction.setShortcut("Delete")
+        removeAction.triggered.connect(lambda _=None:self.view.removeItems())
+        editMenu.addAction(removeAction)
+
+        duplicateAction = QAction("Duplicate", self)
+        duplicateAction.setShortcut("Ctrl+D")
+        duplicateAction.triggered.connect(lambda _=None:self.view.duplicateItems())
+        editMenu.addAction(duplicateAction)
+
+        flipPositionMenu = QMenu("Flip", self)
+        for typ in ["left", "right", "up", "down"]:
+            action = QAction(typ.capitalize(), self)
+            action.triggered.connect(lambda _=None, t=typ: self.view.flipItems(t))
+            flipPositionMenu.addAction(action)
+        editMenu.addMenu(flipPositionMenu)
+        
+        editMenu.addSeparator()
+
+        copyAction = QAction("Copy", self)
+        copyAction.setShortcut("Ctrl+C")
+        copyAction.triggered.connect(lambda _=None:self.view.clipboardCopyItems())
+        editMenu.addAction(copyAction)
+
+        cutAction = QAction("Cut", self)
+        cutAction.setShortcut("Ctrl+X")
+        cutAction.triggered.connect(lambda _=None:self.view.clipboardCutItems())
+        editMenu.addAction(cutAction)
+
+        pasteAction = QAction("Paste", self)
+        pasteAction.setShortcut("Ctrl+V")
+        pasteAction.triggered.connect(lambda _=None:self.view.clipboardPasteItems())
+        editMenu.addAction(pasteAction)
+
+        editMenu.addSeparator()
+
+        rotateAction = QAction("Rotate shape", self)
+        rotateAction.triggered.connect(lambda _=None: self.view.rotateItems())
+        editMenu.addAction(rotateAction)
+
+        replaceAction = QAction("Replace in control/group", self)
+        replaceAction.triggered.connect(lambda _=None: self.view.replaceInNames())
+        editMenu.addAction(replaceAction)
+
+        lockImagesAction = QAction("Lock images", self)
+        lockImagesAction.setShortcut("Ctrl+L")
+        lockImagesAction.setCheckable(True)
+        lockImagesAction.setChecked(self.scene.isImagesLocked)
+        lockImagesAction.triggered.connect(lambda _=None: self.view.lockImages())
+        editMenu.addAction(lockImagesAction)
+
+        selectAllAction = QAction("Select all", self)
+        selectAllAction.triggered.connect(lambda _=None:self.view.selectAllItems())
+        selectAllAction.setShortcut("Ctrl+A")
+        editMenu.addAction(selectAllAction)
+
+        menuBar.addMenu(editMenu)
+
+        # Structure
+        arrangementMenu = QMenu("Arrangement", self)
+        for label, orientation in [("Make row","row"), ("Make column", "column"), ("Make left diagonal", "ldiag"), ("Make right diagonal", "rdiag")]:
+            orientMenu = QMenu(label, self)
+            keys = {"row": "1", "column": "2", "ldiag":"3", "rdiag": "4"}
+            for label, size in [("Tiny", 5), ("Small", 10), ("Medium", 20), ("Large",40)]:
+                action = QAction(label, self)
+                if size == 10: # small
+                    action.setShortcut(keys[orientation])
+                action.triggered.connect(lambda _=None, orientation=orientation, size=size: self.view.makeRowColumnFromSelected(orientation, size))
+
+                orientMenu.addAction(action)
+            arrangementMenu.addMenu(orientMenu)
+
+        alignMenu = QMenu("Align", self)
+        for label, key, edge in [("Left", "[", "left"), ("Right", "]", "right"), ("Top", "_", "top"), ("HCenter","=", "hcenter"), ("VCenter", "-", "vcenter")]:
+            action = QAction(label, self)
+            action.setShortcut(key)
+            action.triggered.connect(lambda _=None, edge=edge: self.view.alignItems(edge))
+            alignMenu.addAction(action)
+        arrangementMenu.addMenu(alignMenu)
+
+        snapToGridAction = QAction("Snap to grid", self)
+        snapToGridAction.setShortcut(".")
+        snapToGridAction.triggered.connect(lambda _=None: self.view.snapToGridItems())
+        arrangementMenu.addAction(snapToGridAction)
+        
+        menuBar.addMenu(arrangementMenu)
+
+        # size
+        sizeMenu = QMenu("Size", self)
+        for label, key, size in [("Tiny", None, -21), ("Small", "Alt+1", -19), ("Meduim", "Alt+2", -15), ("Large", None, -5)]:
+            action = QAction(label, self)
+            if key:
+                action.setShortcut(key)
+            action.triggered.connect(lambda _=None, size=size: self.view.setItemsSize(size))
+            sizeMenu.addAction(action)
+
+        sizeMenu.addSeparator()
+        sameSizeAction = QAction("As first selected", self)
+        sameSizeAction.setShortcut("*")
+        sameSizeAction.triggered.connect(lambda _=None:self.view.setSameSize())
+        sizeMenu.addAction(sameSizeAction)
+
+        menuBar.addMenu(sizeMenu)
+
+        return menuBar        
 
     def installCallbacks(self):
-        if not IsInsideMaya:return
-        
-        if self.mayaVisibilityCallbackIds:
-            self.uninstallCallbacks()
+        self.uninstallCallbacks()
 
-        controlItemDict = {} # {"namespace:M_spine_1_control": SceneItem, ...}
+        controlItemDict = {} # {"namespace:M_spine_1_control": [SceneItem], ...}
 
         ls = set(cmds.ls(sl=True))
 
@@ -2135,14 +2187,18 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
                 if len(splitString(item.pickerItem.control)) > 1: # skip multiple selection
                     continue
 
-                node = self.mayaParameters.namespace+item.pickerItem.control
+                node = item.pickerItem.control if item.pickerItem.control.startswith(":") else self.mayaParameters.namespace+item.pickerItem.control
 
                 if pm.objExists(node):
                     node = pm.PyNode(node)
 
                     item.setSelected(node.name() in ls)
 
-                    controlItemDict[node.name()] = item
+                    if node.name() not in controlItemDict:
+                        controlItemDict[node.name()] = [item]
+                    else:
+                        controlItemDict[node.name()].append(item)
+
                     hierarchy = [node]+node.getAllParents()
                     for n in hierarchy:
                         data = {"hierarchy":hierarchy, "item":item}
@@ -2163,65 +2219,59 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
 
         f = lambda data=controlItemDict: mayaSelectionChangedCallback(self.mayaParameters, data)
         self.mayaSelectionChangedCallbackId = pm.scriptJob(e=["SelectionChanged", f])
-        #print("install", PickerWindows.index(self))
 
     def uninstallCallbacks(self):
-        if not IsInsideMaya:return
-
         if self.mayaSelectionChangedCallbackId and pm.scriptJob(exists=self.mayaSelectionChangedCallbackId):
             pm.scriptJob(kill=self.mayaSelectionChangedCallbackId)
 
         for callback in self.mayaVisibilityCallbackIds:
-            pm.scriptJob(kill=callback)
+            if pm.scriptJob(exists=callback):
+                pm.scriptJob(kill=callback)
 
         self.mayaVisibilityCallbackIds = []
-        #print("uninstall",PickerWindows.index(self))
 
     def closeEvent(self, event):
         self.uninstallCallbacks()
+        self.propertiesWindow.close()
 
     def toggleStayOnTop(self):
         if self._stayOnTopEnabled:
             self.setWindowFlags(self.windowFlags() & ~Qt.WindowStaysOnTopHint)
-            self.pinBtn.setText("Pin")
         else:
             self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
-            self.pinBtn.setText("Unpin")
 
         self._stayOnTopEnabled = not self._stayOnTopEnabled
         self.show()
 
-def setStylesheet(w):    
-    with open(RootDirectory+"/qss/qstyle.qss", "r") as f:
-        iconsDir = (RootDirectory+"/qss/icons/").replace("\\","/")
-        style = f.read().replace("icons/", iconsDir)
-        w.setStyleSheet(style)
+        self.pinBtn.setStyleSheet("background-color: #88dd88" if self._stayOnTopEnabled else "")
 
 def restoreFromMayaNode():
+    global PickerWindows
+    global pickerWindow
+
+    while PickerWindows: # clear picker windows
+        PickerWindows.pop().close()
+
     pickerNode = "picker"
     if pm.objExists(pickerNode):
-
-        global PickerWindows
-        for w in PickerWindows:
-            w.close()
-        PickerWindows = []
-
         pickerNode = pm.PyNode(pickerNode)
         for attr in pickerNode.listAttr(ud=True, st="data*"):
             picker = Picker()
             picker.fromJson(json.loads(attr.get()))
 
-            w = PickerWindow()
-            w.mayaParameters.attributeToSave = attr.longName()
-            w.mayaParameters.doSaveInMayaNode = False
-            w.view.loadPicker(picker)
-            w.mayaParameters.doSaveInMayaNode = True
-            w.show()
+            if not picker.isEmpty():
+                w = PickerWindow()
+                w.mayaParameters.attributeToSave = attr.longName()
+                w.mayaParameters.doSaveInMayaNode = False
+                w.view.loadPicker(picker)
+                w.mayaParameters.doSaveInMayaNode = True
+                w.show()
+                w.view.frameAll()
 
-if __name__ == '__main__':
-    app = QApplication([])
-    w = PickerWindow()
-    w.show()
-    app.exec_()
-else:
-    pickerWindow = PickerWindow()    
+    if PickerWindows: # use first found
+        pickerWindow = PickerWindows[0]
+    else:
+        pickerWindow = PickerWindow()
+        pickerWindow.show()
+
+pickerWindow = PickerWindow()
