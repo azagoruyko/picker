@@ -1354,6 +1354,7 @@ class View(QGraphicsView):
             self._mouseMovePos = event.pos()
 
         elif event.buttons() == Qt.MiddleButton:
+            super(View, self).mousePressEvent(event)
             self._isPanning = True
             self._panningPos = event.pos()
 
