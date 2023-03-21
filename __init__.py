@@ -215,7 +215,7 @@ def splitString(s):
     return re.split("[ ,;]+", s)
 
 def roundTo(n, k=5):
-    _round = lambda n: int(n/k)*k
+    _round = lambda num: k * round(float(num) / k, 0)
 
     T = type(n)
 
@@ -650,6 +650,13 @@ class SceneItem(QGraphicsItem):
             scene.selectionChangedCallback()
 
     def mousePressEvent(self, event):
+        alt = event.modifiers() & Qt.AltModifier
+        shift = event.modifiers()  & Qt.ShiftModifier # add to selection
+        ctrl = event.modifiers() & Qt.ControlModifier # remove from selection
+
+        if alt:
+            return
+
         scene = self.scene()
 
         if event.button() == Qt.LeftButton and not scene.editMode() and self.pickerItem.script: # execute script
@@ -659,10 +666,7 @@ class SceneItem(QGraphicsItem):
             finally:
                 pm.undoInfo(cck=True)
 
-        elif event.button() in [Qt.LeftButton, Qt.MiddleButton] : # handle selection
-            shift = event.modifiers()  & Qt.ShiftModifier # add to selection
-            ctrl = event.modifiers() & Qt.ControlModifier # remove from selection
-
+        elif event.button() in [Qt.LeftButton, Qt.MiddleButton]: # handle selection
             # when we press on a selected item with middle mouse, don't clear selection
             if not (event.button() == Qt.MiddleButton and self.isSelected()):
                 # Deselect all other items in the same scene
@@ -682,12 +686,11 @@ class SceneItem(QGraphicsItem):
                 else:
                     self.setSelected(True)
 
-        if event.button() == Qt.MiddleButton:
-            for item in scene.items():
-                if isinstance(item, SceneItem) and item.isSelected():
-                    item._isDragging = True
-                    item._lastPos = event.scenePos()
-                    item._startPos = item.pos()
+        if event.button() == Qt.MiddleButton and not ctrl and not shift:
+            for item in scene.selectedItems():
+                item._isDragging = True
+                item._lastPos = event.scenePos()
+                item._startPos = item.pos()
 
     def mouseMoveEvent(self, event):
         if self._isDragging:
@@ -1354,7 +1357,9 @@ class View(QGraphicsView):
             self._mouseMovePos = event.pos()
 
         elif event.buttons() == Qt.MiddleButton:
-            super(View, self).mousePressEvent(event)
+            if self.items(event.pos()): # when items under mouse
+                super(View, self).mousePressEvent(event)
+            
             self._isPanning = True
             self._panningPos = event.pos()
 
@@ -2216,11 +2221,8 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
         arrangementMenu = QMenu("Arrangement", self)
         for label, orientation in [("Make row","row"), ("Make column", "column"), ("Make left diagonal", "ldiag"), ("Make right diagonal", "rdiag")]:
             orientMenu = QMenu(label, self)
-            keys = {"row": "1", "column": "2", "ldiag":"3", "rdiag": "4"}
             for label, size in [("Tiny", 5), ("Small", 10), ("Medium", 20), ("Large",40)]:
                 action = QAction(label, self)
-                if size == 10: # small
-                    action.setShortcut(keys[orientation])
                 action.triggered.connect(lambda _=None, orientation=orientation, size=size: self.view.makeRowColumnFromSelected(orientation, size))
 
                 orientMenu.addAction(action)
@@ -2235,7 +2237,6 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
         arrangementMenu.addMenu(alignMenu)
 
         snapToGridAction = QAction("Snap to grid", self)
-        snapToGridAction.setShortcut(".")
         snapToGridAction.triggered.connect(lambda _=None: self.view.snapToGridItems())
         arrangementMenu.addAction(snapToGridAction)
 
