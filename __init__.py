@@ -1000,10 +1000,6 @@ class View(QGraphicsView):
             item.setSelected(True)
         scene.endEditBlock()
 
-    def snapToGridItems(self, items=None):
-        for sel in items or self.scene().sortedSelection():
-            sel.setPos(roundTo(sel.pos()))
-
     def replaceInNames(self):
         replace, ok = QInputDialog.getText(self, "Replace", "Replace inside control/group (old=new)", QLineEdit.Normal, "L_=R_")
         if ok and replace:
@@ -2235,10 +2231,6 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
             action.triggered.connect(lambda _=None, edge=edge: self.view.alignItems(edge))
             alignMenu.addAction(action)
         arrangementMenu.addMenu(alignMenu)
-
-        snapToGridAction = QAction("Snap to grid", self)
-        snapToGridAction.triggered.connect(lambda _=None: self.view.snapToGridItems())
-        arrangementMenu.addAction(snapToGridAction)
 
         menuBar.addMenu(arrangementMenu)
 
