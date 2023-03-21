@@ -45,7 +45,7 @@ def getNodeColor(node):
     if isinstance(node, pm.nt.Transform):
         sh = node.getShape()
         if sh and sh.overrideEnabled.get():
-            return MayaIndexColors[sh.overrideColor.get()]                 
+            return MayaIndexColors[sh.overrideColor.get()]
 
 def color2hex(r,g,b):
     return "#%0.2x%0.2x%0.2x"%(r,g,b)
@@ -899,6 +899,7 @@ class Scene(QGraphicsScene):
                 item.scaleAnchorItem.setVisible(v)
 
         self._editMode = v
+        self.update() # repaint items
         self.editModeChanged.emit(v)
 
 class View(QGraphicsView):
@@ -910,10 +911,11 @@ class View(QGraphicsView):
 
         self._startDrag = None
         self._mouseMovePos = None
+        self._isPanning = False
         self.rubberBand = None
         self.selectionBeforeRubberBand = []
 
-        self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
+        self.setTransformationAnchor(QGraphicsView.AnchorViewCenter)
         self.setContextMenuPolicy(Qt.DefaultContextMenu)
 
         self.setMouseTracking(True)
@@ -938,11 +940,12 @@ class View(QGraphicsView):
 
     def dragMoveEvent(self, event):
         if event.mimeData().hasText():
-            event.acceptProposedAction()            
+            event.acceptProposedAction()
 
-    def newPicker(self, window=False):
+    def newPicker(self, window=False, quiet=False):
         if not window:
-            ok = QMessageBox.question(self, "Picker", "Clear current and make new picker?", QMessageBox.Yes and QMessageBox.No, QMessageBox.Yes) == QMessageBox.Yes
+            ok = quiet or QMessageBox.question(self, "Picker", "Clear current and make new picker?", 
+                                               QMessageBox.Yes and QMessageBox.No, QMessageBox.Yes) == QMessageBox.Yes
             if ok:
                 self.setTransform(QTransform()) # reset scale
                 self.scene().setEditMode(True)
@@ -1061,6 +1064,9 @@ class View(QGraphicsView):
             self.pickerLoaded.emit(picker, True)
 
     def flipItems(self, edge):
+        if not self.scene().editMode():
+            return
+
         boundingRect = QRectF()
 
         selected = self.scene().sortedSelection()
@@ -1177,7 +1183,7 @@ class View(QGraphicsView):
                 if cmds.objExists(scene.mayaParameters.namespace+ctrl):
                     pickerItem.control = ctrl
 
-                    nodeColor = getNodeColor(scene.mayaParameters.namespace+ctrl) 
+                    nodeColor = getNodeColor(scene.mayaParameters.namespace+ctrl)
                     if nodeColor:
                         pickerItem.background = nodeColor
 
@@ -1199,6 +1205,9 @@ class View(QGraphicsView):
             scene.propertiesWidget.updateProperties(items[-1].pickerItem)
 
     def rotateItems(self):
+        if not self.scene().editMode():
+            return
+
         selected = self.scene().sortedSelection()
         for item in selected:
             item.pickerItem.rotated = not item.pickerItem.rotated
@@ -1208,10 +1217,16 @@ class View(QGraphicsView):
             self.scene().propertiesWidget.updateProperties(selected[-1].pickerItem)
 
     def setItemsSize(self, size):
+        if not self.scene().editMode():
+            return
+
         for item in self.scene().sortedSelection():
             item.setUnitScale(QVector2D(size, size))
 
     def duplicateItems(self):
+        if not self.scene().editMode():
+            return
+
         scene = self.scene()
         selected = scene.sortedSelection()
 
@@ -1238,6 +1253,9 @@ class View(QGraphicsView):
             self.scene().undoAppend("duplicate", undoFunc)
 
     def makeRowColumnFromSelected(self, orientation, size):
+        if not self.scene().editMode():
+            return
+
         selected = self.scene().sortedSelection()
         if len(selected) > 1:
             self.scene().undoNewBlock()
@@ -1258,12 +1276,18 @@ class View(QGraphicsView):
                 prev +=1
 
     def setSameSize(self):
+        if not self.scene().editMode():
+            return
+
         selected = self.scene().sortedSelection()
         if len(selected) > 1:
             for item in selected[1:]:
                 item.setUnitScale(selected[0].unitScale())
 
     def alignItems(self, edge):
+        if not self.scene().editMode():
+            return
+
         selected = self.scene().sortedSelection()
         if selected and len(selected) > 1:
             self.scene().undoNewBlock()
@@ -1329,6 +1353,10 @@ class View(QGraphicsView):
         elif event.button() == Qt.RightButton:
             self._mouseMovePos = event.pos()
 
+        elif event.buttons() == Qt.MiddleButton:
+            self._isPanning = True
+            self._panningPos = event.pos()
+
         else:
             super(View, self).mousePressEvent(event)
 
@@ -1344,12 +1372,19 @@ class View(QGraphicsView):
             self.scale(scale, scale)
             self._mouseMovePos = event.pos()
 
-        elif self.rubberBand:
+        elif (ctrl or alt) and event.buttons() == Qt.MiddleButton and self._isPanning: 
+            self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - (event.x() - self._panningPos.x()))
+            self.verticalScrollBar().setValue(self.verticalScrollBar().value() - (event.y() - self._panningPos.y()))              
+            self._panningPos = event.pos()
+
+        elif event.buttons() == Qt.LeftButton and self.rubberBand:
             self.rubberBand.setGeometry(QRect(self._startDrag, event.pos()).normalized())
 
     def mouseReleaseEvent(self, event):
         ctrl = event.modifiers() & Qt.ControlModifier
         shift = event.modifiers() & Qt.ShiftModifier
+
+        self._isPanning = False
 
         if event.button() == Qt.LeftButton:
             if self.rubberBand:
@@ -1849,6 +1884,9 @@ class MayaParameters(object):
         self.pickerIsModified = False # when picker is changed not in Edit Mode (like a position via middle mouse)
         self.pickerWindow = None
 
+        self.visibilityCallbackIds = []
+        self.selectionChangedCallbackId = None
+
 class PropertiesWindow(QDialog):
     def __init__(self):
         super(PropertiesWindow, self).__init__(parent=mayaMainWindow)
@@ -1874,16 +1912,13 @@ class DraggableButton(QPushButton):
         super(DraggableButton, self).__init__(title, **kwargs)
 
     def mousePressEvent(self, event):
-        if event.buttons() != Qt.MiddleButton:
-            super(DraggableButton, self).mousePressEvent(event)
-            return
+        if event.buttons() in [Qt.MiddleButton, Qt.LeftButton]:
+            mime_data = QMimeData()
+            mime_data.setText(" ".join(cmds.ls(sl=True)))
 
-        mime_data = QMimeData()
-        mime_data.setText(" ".join(cmds.ls(sl=True)))
-
-        drag = QDrag(self)
-        drag.setMimeData(mime_data)
-        drag.exec_(Qt.MoveAction)
+            drag = QDrag(self)
+            drag.setMimeData(mime_data)
+            drag.exec_(Qt.MoveAction)
 
     def dragEnterEvent(self, event):
         event.accept()
@@ -1892,8 +1927,6 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
     def __init__(self):
         super(PickerWindow, self).__init__(parent=mayaMainWindow)
 
-        self.mayaVisibilityCallbackIds = []
-        self.mayaSelectionChangedCallbackId = []
         self.mayaParameters = MayaParameters()
         self.mayaParameters.pickerWindow = self
 
@@ -1905,6 +1938,7 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
 
         mainLayout = QVBoxLayout()
         self.setLayout(mainLayout)
+        mainLayout.setMargin(0)
 
         self.propertiesWindow = PropertiesWindow()
 
@@ -1914,6 +1948,8 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
         self.view = View(self.scene)
         self.view.pickerLoaded.connect(self.pickerLoaded)
         self.view.somethingDropped.connect(self.somethingDroppedOnView)
+
+        self.menuBar = self.createMenuBar()
 
         # tool buttons
         toolsLayout = QHBoxLayout()
@@ -1936,7 +1972,6 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
         makeControlBtn = DraggableButton()
         makeControlBtn.setIcon(QIcon(RootDirectory+"/icons/plus.png"))
         makeControlBtn.setToolTip("Add controls from selection")
-        makeControlBtn.clicked.connect(lambda: QMessageBox.information(self, "Picker", "Use drag and drop!"))
 
         focusBtn = QPushButton()
         focusBtn.setIcon(QIcon(RootDirectory+"/icons/focus.png"))
@@ -1962,7 +1997,7 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
         self.namespaceWidget.activated.connect(self.namespaceChanged)
         self.namespaceWidget.mousePressEvent = self.namespaceMousePressEvent
 
-        mainLayout.addWidget(self.createMenuBar())
+        mainLayout.setMenuBar(self.menuBar)
         mainLayout.addLayout(toolsLayout)
         mainLayout.addWidget(self.view)
         mainLayout.addWidget(self.namespaceWidget)
@@ -2054,15 +2089,13 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
             pickerNode = pm.PyNode(pickerNode)
 
         pickerIdx = PickerWindows.index(self)
+        if not self.mayaParameters.attributeToSave:
+            self.mayaParameters.attributeToSave = "data"+str(pickerIdx)
+
+        if not pickerNode.hasAttr(self.mayaParameters.attributeToSave):
+            pickerNode.addAttr(self.mayaParameters.attributeToSave, dt="string")
 
         picker = self.view.toPicker()
-        if not picker.isEmpty():
-            if not self.mayaParameters.attributeToSave:
-                self.mayaParameters.attributeToSave = "data"+str(pickerIdx)
-
-            if not pickerNode.hasAttr(self.mayaParameters.attributeToSave):
-                pickerNode.addAttr(self.mayaParameters.attributeToSave, dt="string")
-
         pickerNode.attr(self.mayaParameters.attributeToSave).set(json.dumps(picker.toJson()))
         self.mayaParameters.pickerIsModified = False
 
@@ -2077,9 +2110,9 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
         menuBar = QMenuBar()
 
         # file
-        fileMenu = QMenu("File", self)        
+        fileMenu = QMenu("File", self)
         menuBar.addMenu(fileMenu)
-        
+
         newAction = QAction("New", self)
         newAction.triggered.connect(lambda _=None:self.createNewPicker(window=False))
         fileMenu.addAction(newAction)
@@ -2112,9 +2145,9 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
 
         fileMenu.addSeparator()
 
-        restoreFromMayaAction = QAction("Restore from Maya", self)
-        restoreFromMayaAction.triggered.connect(restoreFromMayaNode)
-        fileMenu.addAction(restoreFromMayaAction)
+        closeThisPickerAction = QAction("Close this picker", self)
+        closeThisPickerAction.triggered.connect(self.closeThisPicker)
+        fileMenu.addAction(closeThisPickerAction)
 
         # edit
         editMenu = QMenu("Edit", self)
@@ -2135,7 +2168,7 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
             action.triggered.connect(lambda _=None, t=typ: self.view.flipItems(t))
             flipPositionMenu.addAction(action)
         editMenu.addMenu(flipPositionMenu)
-        
+
         editMenu.addSeparator()
 
         copyAction = QAction("Copy", self)
@@ -2203,27 +2236,33 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
         snapToGridAction.setShortcut(".")
         snapToGridAction.triggered.connect(lambda _=None: self.view.snapToGridItems())
         arrangementMenu.addAction(snapToGridAction)
-        
+
         menuBar.addMenu(arrangementMenu)
 
         # size
         sizeMenu = QMenu("Size", self)
-        for label, key, size in [("Tiny", None, -21), ("Small", "Alt+1", -19), ("Meduim", "Alt+2", -15), ("Large", None, -5)]:
+        for label, size in [("Tiny", -21), ("Small", -19), ("Meduim", -15), ("Large", -5)]:
             action = QAction(label, self)
-            if key:
-                action.setShortcut(key)
             action.triggered.connect(lambda _=None, size=size: self.view.setItemsSize(size))
             sizeMenu.addAction(action)
 
         sizeMenu.addSeparator()
         sameSizeAction = QAction("As first selected", self)
-        sameSizeAction.setShortcut("*")
         sameSizeAction.triggered.connect(lambda _=None:self.view.setSameSize())
         sizeMenu.addAction(sameSizeAction)
 
         menuBar.addMenu(sizeMenu)
+        return menuBar
 
-        return menuBar        
+    def hideEvent(self, event): # on close or minimization
+        if self.scene.editMode():
+            self.scene.setEditMode(False)
+
+    def closeThisPicker(self):
+        self.uninstallCallbacks()
+        self.scene.clear()
+        self.saveToMayaNode()
+        self.close()
 
     def installCallbacks(self):
         self.uninstallCallbacks()
@@ -2252,8 +2291,8 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
                     hierarchy = [node]+node.getAllParents()
                     for n in hierarchy:
                         data = {"hierarchy":hierarchy, "item":item}
-                        callback = pm.scriptJob(ac=[n+".v", pm.Callback(mayaVisibilityCallback, n+".v", data)]) # attribute change on visibility
-                        self.mayaVisibilityCallbackIds.append(callback)
+                        callback = pm.scriptJob(ac=[n+".v", pm.Callback(mayaVisibilityCallback, n+".v", data)], kws=True) # attribute change on visibility
+                        self.mayaParameters.visibilityCallbackIds.append(callback)
 
                     item.isMayaControlHidden = False
                     for h in hierarchy:
@@ -2268,22 +2307,19 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
                 item.update()
 
         f = lambda data=controlItemDict: mayaSelectionChangedCallback(self.mayaParameters, data)
-        self.mayaSelectionChangedCallbackId = pm.scriptJob(e=["SelectionChanged", f])
+        self.mayaParameters.selectionChangedCallbackId = pm.scriptJob(e=["SelectionChanged", f], kws=True)
 
     def uninstallCallbacks(self):
-        if self.mayaSelectionChangedCallbackId and pm.scriptJob(exists=self.mayaSelectionChangedCallbackId):
-            pm.scriptJob(kill=self.mayaSelectionChangedCallbackId)
+        if self.mayaParameters.selectionChangedCallbackId and pm.scriptJob(exists=self.mayaParameters.selectionChangedCallbackId):
+            pm.scriptJob(kill=self.mayaParameters.selectionChangedCallbackId)
 
-        for callback in self.mayaVisibilityCallbackIds:
+        for callback in self.mayaParameters.visibilityCallbackIds:
             if pm.scriptJob(exists=callback):
                 pm.scriptJob(kill=callback)
 
-        self.mayaVisibilityCallbackIds = []
-
-    def closeEvent(self, event):
-        self.uninstallCallbacks()
-        self.propertiesWindow.close()
-
+        self.mayaParameters.selectionChangedCallbackId = None
+        self.mayaParameters.visibilityCallbackIds = []
+    
     def toggleStayOnTop(self):
         if self._stayOnTopEnabled:
             self.setWindowFlags(self.windowFlags() & ~Qt.WindowStaysOnTopHint)
