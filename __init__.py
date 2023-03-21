@@ -1402,8 +1402,9 @@ class View(QGraphicsView):
                     newSelected = scene.selectedItems()
                     scene.clearSelection()
 
-                    for sel in oldSelection:
-                        sel.setSelected(True)
+                    if ctrl or shift: # keep previous selection in ctrl/shift modes
+                        for sel in oldSelection:
+                            sel.setSelected(True)
 
                     for sel in newSelected:
                         if shift and ctrl:
