@@ -2337,7 +2337,9 @@ def restoreFromMayaNode():
     global pickerWindow
 
     while PickerWindows: # clear picker windows
-        PickerWindows.pop().close()
+        w = PickerWindows.pop()
+        w.uninstallCallbacks()
+        w.close()
 
     pickerNode = "picker"
     if pm.objExists(pickerNode):
