@@ -1,6 +1,5 @@
 import os
 import sys
-import random
 import json
 import re
 #import svg.path as svg
@@ -18,8 +17,7 @@ from shiboken2 import wrapInstance
 mayaMainWindow = wrapInstance(long(api.MQtUtil.mainWindow()), QMainWindow)
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 
-NiceColors = ["#E6D0DE", "#CDA2BE", "#B5739D", "#E1D5E7", "#C3ABD0", "#A680B8", "#D4E1F5", "#A9C4EB", "#7EA6E0", "#D5E8D4", "#9AC7BF", "#67AB9F", "#D5E8D4", "#B9E0A5", "#97D077", "#FFF2CC", "#FFE599", "#FFD966", "#FFF4C3", "#FFCE9F", "#FFB570", "#F8CECC", "#F19C99", "#EA6B66"]
-getNiceColor = lambda:NiceColors[random.randrange(len(NiceColors))]
+NiceColors = ['#FF0000', '#FF7F00', '#FFFF00', '#00FF00', '#00FFFF', '#0000FF', '#8B00FF', '#FF00FF', '#FF1493', '#FF69B4', '#FFC0CB', '#FFD700', '#32CD32', '#00FF7F', '#1E90FF', '#8A2BE2']
 
 if sys.version_info.major > 2:
     RootDirectory = os.path.dirname(__file__)
@@ -28,6 +26,26 @@ else:
 
 PickerWindows = []
 Clipboard = []
+
+def getNodeColor(node):
+    MayaIndexColors = {
+        0: '#787878',1: '#000000', 2: '#404040',
+        3: '#808080', 4: '#9b0028', 5: '#000460',
+        6: '#0000ff', 7: '#494949',8: '#260043',
+        9: '#c800c8', 10: '#8a4833',11: '#3f231f',
+        12: '#992600', 13: '#ff0000',14: '#00ff00',
+        15: '#004199', 16: '#ffffff', 17: '#ffff00',
+        18: '#64dcff', 19: '#43ffa3', 20: '#ffb0b0',
+        21: '#e4ac79', 22: '#ffff63', 23: '#009954',
+        24: '#a16a30', 25: '#9ea130',26: '#68a130',
+        27: '#30a15d', 28: '#30a1a1', 29: '#3067a1',
+        30: '#6f30a1', 31: '#a1306a'}
+
+    node = pm.PyNode(node)
+    if isinstance(node, pm.nt.Transform):
+        sh = node.getShape()
+        if sh and sh.overrideEnabled.get():
+            return MayaIndexColors[sh.overrideColor.get()]                 
 
 def color2hex(r,g,b):
     return "#%0.2x%0.2x%0.2x"%(r,g,b)
@@ -38,7 +56,7 @@ def size2scale(s):
 class PickerItem(object):
     def __init__(self, svgpath="M 0 0 h 100 v 100 h -100 v -100 Z"):
         self.position = [0,0]
-        self.background = "#eaa763" #getNiceColor()
+        self.background = "#eaa763"
         self.foreground = "#000000"
         self.image = "" # pixmap bytes
         self.imageAspectRatio = 2 # 0-IgnoreAspectRatio, 1-KeepAspectRatio, 2-KeepAspectRatioByExpanding
@@ -672,15 +690,13 @@ class SceneItem(QGraphicsItem):
                     item._startPos = item.pos()
 
     def mouseMoveEvent(self, event):
-        shift = event.modifiers() & Qt.ShiftModifier
-
         if self._isDragging:
             scene = self.scene()
             for item in scene.items():
                 if isinstance(item, SceneItem) and item._isDragging:
                     delta = item._lastPos - event.scenePos()
                     newPos = item._startPos - delta
-                    item.setPos(newPos)# if shift else roundTo(newPos))
+                    item.setPos(newPos)
 
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.MiddleButton:
@@ -893,6 +909,7 @@ class View(QGraphicsView):
         super(View, self).__init__(scene, **kwargs)
 
         self._startDrag = None
+        self._mouseMovePos = None
         self.rubberBand = None
         self.selectionBeforeRubberBand = []
 
@@ -1109,6 +1126,10 @@ class View(QGraphicsView):
 
     def clipboardPasteItems(self):
         global Clipboard
+
+        if not self.scene().editMode():
+            return
+
         if Clipboard:
             oldSelection = self.scene().sortedSelection()
 
@@ -1138,7 +1159,9 @@ class View(QGraphicsView):
         position = roundTo(position or self.mapToScene(self.mapFromGlobal(QCursor.pos())))
 
         if not controls:
-            controls = cmds.ls(sl=True) or [""] # single empty item when no selection
+            controls = [n.stripNamespace() for n in pm.ls(sl=True)]
+            if not controls:
+                controls = [""] # single empty item when no selection
 
         shapeBrower = ShapeBrowserWidget(parent=self)
         shapeBrower.exec_()
@@ -1150,7 +1173,13 @@ class View(QGraphicsView):
             scene.beginEditBlock()
             for ctrl in controls:
                 pickerItem = PickerItem(shapeBrower.selectedSvgpath)
-                pickerItem.control = ctrl
+
+                if cmds.objExists(scene.mayaParameters.namespace+ctrl):
+                    pickerItem.control = ctrl
+
+                    nodeColor = getNodeColor(scene.mayaParameters.namespace+ctrl) 
+                    if nodeColor:
+                        pickerItem.background = nodeColor
 
                 item = SceneItem(pickerItem)
                 scene.addItem(item)
@@ -1297,13 +1326,25 @@ class View(QGraphicsView):
             self.rubberBand.setGeometry(QRect(self._startDrag, QSize()))
             self.rubberBand.show()
 
+        elif event.button() == Qt.RightButton:
+            self._mouseMovePos = event.pos()
+
         else:
             super(View, self).mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
         super(View, self).mouseMoveEvent(event)
 
-        if self.rubberBand:
+        alt = event.modifiers() & Qt.AltModifier
+        ctrl = event.modifiers() & Qt.ControlModifier
+
+        if (ctrl or alt) and event.buttons() == Qt.RightButton:
+            delta = event.pos().x() - self._mouseMovePos.x()
+            scale = 1 + delta / 500.0
+            self.scale(scale, scale)
+            self._mouseMovePos = event.pos()
+
+        elif self.rubberBand:
             self.rubberBand.setGeometry(QRect(self._startDrag, event.pos()).normalized())
 
     def mouseReleaseEvent(self, event):
@@ -1393,7 +1434,7 @@ class PickerItemWidget(QWidget):
 
         self.svgpath = svgpath
         self.painterPath = getPainterPath(svgpath, 0.3, 0.3)
-        self.color = QColor(color or NiceColors[3])
+        self.color = QColor(color or "#cccccc")
 
         self.setFixedSize(40, 40)
         self.setCursor(Qt.PointingHandCursor)
@@ -1496,6 +1537,8 @@ class ColorWidget(QWidget):
     def mousePressEvent(self, event):
         if event.buttons() == Qt.LeftButton:
             colorDialog = QColorDialog(self.color)
+            for i, color in enumerate(NiceColors): # add nice colors
+                colorDialog.setCustomColor(i, QColor(color))
             colorDialog.exec_()
 
             if colorDialog.result():
@@ -2023,6 +2066,13 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
         pickerNode.attr(self.mayaParameters.attributeToSave).set(json.dumps(picker.toJson()))
         self.mayaParameters.pickerIsModified = False
 
+    def createNewPicker(self, window=False):
+        if window:
+            self.view.newPicker(window)
+        else:
+            self.uninstallCallbacks()
+            self.view.newPicker(window)
+
     def createMenuBar(self):
         menuBar = QMenuBar()
 
@@ -2031,11 +2081,11 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
         menuBar.addMenu(fileMenu)
         
         newAction = QAction("New", self)
-        newAction.triggered.connect(lambda _=None:self.view.newPicker(window=False))
+        newAction.triggered.connect(lambda _=None:self.createNewPicker(window=False))
         fileMenu.addAction(newAction)
 
         newWindowAction = QAction("New window", self)
-        newWindowAction.triggered.connect(lambda _=None:self.view.newPicker(window=True))
+        newWindowAction.triggered.connect(lambda _=None:self.createNewPicker(window=True))
         fileMenu.addAction(newWindowAction)
 
         openAction = QAction("Open", self)
