@@ -833,7 +833,6 @@ class Scene(QGraphicsScene):
 
     def selectionChangedCallback(self):
         self.updateSortedSelection()
-
         self.updateProperties()
 
         if not self.editMode():
@@ -1815,14 +1814,12 @@ class PropertiesWidget(QWidget):
             self.somethingChanged.emit()
 
     def updateProperties(self, pickerItem=None):
-        if pickerItem is not None:
-            self.pickerItem = pickerItem.duplicate()
+        self.setEnabled(True if pickerItem else False)
 
-        if not self.pickerItem:
-            self.setEnabled(False)
+        if not pickerItem:
             return
 
-        self.setEnabled(True)
+        self.pickerItem = pickerItem.duplicate()
 
         self._updating = True
 
