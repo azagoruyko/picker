@@ -162,6 +162,25 @@ class Picker(object):
             item.fromJson(d)
             self.items.append(item)
 
+def findSymmetricName(name, left=True, right=True):
+    L_starts = {"L_": "R_", "l_": "r_"}
+    L_ends = {"_L": "_R", "_l": "_r"}
+
+    R_starts = {"R_": "L_", "r_": "l_"}
+    R_ends = {"_R": "_L", "_r": "_l"}
+
+    for enable, starts, ends in [(left, L_starts, L_ends), (right, R_starts, R_ends)]:
+        if enable:
+            for s in starts:
+                if name.startswith(s):
+                    return starts[s] + name[len(s):]
+
+            for s in ends:
+                if name.endswith(s):
+                    return name[:-len(s)] + ends[s]
+
+    return name
+
 def pixmap2str(pixmap):
     ba = QByteArray()
     buff = QBuffer(ba)
@@ -209,7 +228,6 @@ def mayaSelectionChangedCallback(mayaParameters, data):
             item.setSelected(True)
 
     scene.blockSignals(False)
-    scene.updateSortedSelection()
 
 def splitString(s):
     return re.split("[ ,;]+", s)
@@ -727,9 +745,15 @@ class Scene(QGraphicsScene):
         self._sortedSelection = []
 
         self.undoEnabled = True
+        self._undoDisableOder = 0 # beginEditBlock/endEditBlock inc/dec this
         self._undoStack = [] # [(id, function), (id, function)], where id identifies undo operation, function is a recover function
+        self._undoTempStack = []
 
         self.selectionChanged.connect(self.selectionChangedCallback)
+
+    def updateProperties(self):
+        selection = self.sortedSelection()
+        self.propertiesWidget.updateProperties(selection[-1].pickerItem if selection else None)
 
     def updateItemsProperties(self):
         if not self.editMode():
@@ -794,7 +818,8 @@ class Scene(QGraphicsScene):
         undoFunc = lambda items=self.sortedSelection(): (self.clearSelection(), [item.setSelected(True) for item in items])
         self.undoAppend("selection", undoFunc, str([id(item) for item in self.sortedSelection()]))
 
-        selectedItems = sorted(self.selectedItems(), key=lambda item: QVector2D(self.sceneRect().topLeft()-item.pos()).length()) # distance to origin
+        # sort selected items by distance to origin
+        selectedItems = sorted(self.selectedItems(), key=lambda item: QVector2D(self.sceneRect().topLeft()-item.pos()).length())
 
         if selectedItems:
             self._sortedSelection = [item for item in self._sortedSelection if item.isSelected()]
@@ -809,11 +834,7 @@ class Scene(QGraphicsScene):
     def selectionChangedCallback(self):
         self.updateSortedSelection()
 
-        if self.editMode() and self.sortedSelection():
-            self.propertiesWidget.setEnabled(True)
-            self.propertiesWidget.updateProperties(self.sortedSelection()[-1].pickerItem)
-        else:
-            self.propertiesWidget.setEnabled(False)
+        self.updateProperties()
 
         if not self.editMode():
             nodes = set()
@@ -829,19 +850,24 @@ class Scene(QGraphicsScene):
         return self._sortedSelection[:]
 
     def beginEditBlock(self):
-        self.undoEnabled = False
+        self._undoDisableOder += 1
 
     def endEditBlock(self):
-        self.updateSortedSelection()
-        self.undoEnabled = True
+        self._undoDisableOder -= 1
 
-    def undoNewBlock(self):
+        # append all temporary operations as a single undo function
+        if self._undoTempStack and not self.isInEditBlock():
+            tempStackFunc = lambda lst=self._undoTempStack: [f() for _,f in lst]
+            self.undoAppend("temp", tempStackFunc)
+            self._undoTempStack = []
+
+    def isInEditBlock(self):
+        return self._undoDisableOder > 0
+
+    def undoNewBlock(self): # used to separate operations from previous onces
         self.undoAppend("newBlock", None)
 
     def undoAppendForSelected(self, name):
-        if not self.undoEnabled or not self.sortedSelection() or not self.editMode():
-            return
-
         funcList = []
         for item in self.sortedSelection():
             f = lambda item=item, state=item.pickerItem.duplicate(): (item.pickerItem.copy(state),
@@ -852,7 +878,7 @@ class Scene(QGraphicsScene):
 
         self.undoAppend(name, undoFunc, str([id(item) for item in self.sortedSelection()]))
 
-    def undoAppend(self, name, undoFunc, operationId=None): # always append into undoStack when operationId is None
+    def undoAppend(self, name, undoFunc, operationId=None):
         if not self.undoEnabled or not self.editMode():
             return
 
@@ -862,10 +888,16 @@ class Scene(QGraphicsScene):
         if operationId is not None and lastOp and lastOp[0] == cmd:
             pass
         else:
-            self._undoStack.append((cmd, undoFunc))
+            if self.isInEditBlock():
+                self._undoTempStack.append((cmd, undoFunc))
+            else:
+                self._undoStack.append((cmd, undoFunc))
 
     def getUndoLastOperation(self):
-        return self._undoStack[-1] if self._undoStack else None
+        if self.isInEditBlock():
+            return self._undoTempStack[-1] if self._undoTempStack else None
+        else:
+            return self._undoStack[-1] if self._undoStack else None
 
     def flushUndo(self):
         self._undoStack = []
@@ -878,6 +910,7 @@ class Scene(QGraphicsScene):
                 print("Selection undo is empty")
             else:
                 self.undoEnabled = False
+
                 while True and self._undoStack:
                     cmd, undoFunc = self._undoStack.pop()
 
@@ -886,6 +919,8 @@ class Scene(QGraphicsScene):
                         break
 
                 self.undoEnabled = True
+
+                self.updateProperties()
 
         else:
             super(Scene, self).keyPressEvent(event)
@@ -919,8 +954,6 @@ class View(QGraphicsView):
         self.selectionBeforeRubberBand = []
 
         self.setTransformationAnchor(QGraphicsView.AnchorViewCenter)
-        self.setContextMenuPolicy(Qt.DefaultContextMenu)
-
         self.setMouseTracking(True)
         self.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
         self.setAcceptDrops(True)
@@ -947,7 +980,7 @@ class View(QGraphicsView):
 
     def newPicker(self, window=False, quiet=False):
         if not window:
-            ok = quiet or QMessageBox.question(self, "Picker", "Clear current and make new picker?", 
+            ok = quiet or QMessageBox.question(self, "Picker", "Clear current and make new picker?",
                                                QMessageBox.Yes and QMessageBox.No, QMessageBox.Yes) == QMessageBox.Yes
             if ok:
                 self.setTransform(QTransform()) # reset scale
@@ -1011,7 +1044,7 @@ class View(QGraphicsView):
                     item.pickerItem.control = item.pickerItem.control.replace(old,new)
                     item.pickerItem.group = item.pickerItem.group.replace(old,new)
 
-                self.scene().propertiesWidget.updateProperties(selection[-1].pickerItem)
+                self.scene().updateProperties()
             else:
                 QMessageBox.critical(self, "Replace", "Invalid replace format. Must be 'old=new', i.e L_=R_")
 
@@ -1022,7 +1055,7 @@ class View(QGraphicsView):
             return
 
         scene = self.scene()
-        scene.undoEnabled = False
+        scene.beginEditBlock()
 
         oldSelection = scene.sortedSelection()
 
@@ -1043,7 +1076,7 @@ class View(QGraphicsView):
 
             newItems.append(item)
 
-        scene.undoEnabled = True
+        scene.endEditBlock()
 
         if not asImport: # clear undo when just open new picker
             scene.flushUndo()
@@ -1092,8 +1125,7 @@ class View(QGraphicsView):
 
             item.updateShape()
 
-        if selected:
-            self.scene().propertiesWidget.updateProperties(selected[-1].pickerItem)
+        self.scene().updateProperties()
 
     def lockImages(self):
         if not self.scene().editMode():
@@ -1157,7 +1189,7 @@ class View(QGraphicsView):
                                                                                          [item.setSelected(True) for item in oldSelection])
             self.scene().undoAppend("paste", undoFunc)
 
-            self.scene().propertiesWidget.updateProperties(newItems[-1].pickerItem)
+            self.scene().updateProperties()
             Clipboard = []
 
     def insertItems(self, position=None, controls=None):
@@ -1201,7 +1233,7 @@ class View(QGraphicsView):
                                                                                  [item.setSelected(True) for item in oldSelection])
             scene.undoAppend("insert", undoFunc)
 
-            scene.propertiesWidget.updateProperties(items[-1].pickerItem)
+            scene.updateProperties()
 
     def rotateItems(self):
         if not self.scene().editMode():
@@ -1212,8 +1244,7 @@ class View(QGraphicsView):
             item.pickerItem.rotated = not item.pickerItem.rotated
             item.updateShape()
 
-        if selected:
-            self.scene().propertiesWidget.updateProperties(selected[-1].pickerItem)
+        self.scene().updateProperties()
 
     def setItemsSize(self, size):
         if not self.scene().editMode():
@@ -1222,7 +1253,23 @@ class View(QGraphicsView):
         for item in self.scene().sortedSelection():
             item.setUnitScale(QVector2D(size, size))
 
-    def duplicateItems(self):
+    def mirrorItems(self):
+        if not self.scene().editMode():
+            return
+
+        scene = self.scene()
+        scene.beginEditBlock()
+        self.duplicateItems(QPointF(0,0))
+        self.flipItems("left")
+        scene.endEditBlock()
+
+        for item in scene.selectedItems():
+            item.pickerItem.control = findSymmetricName(item.pickerItem.control)
+            item.pickerItem.group = findSymmetricName(item.pickerItem.group)
+
+        scene.updateProperties()
+
+    def duplicateItems(self, offset=QPointF(20,20)):
         if not self.scene().editMode():
             return
 
@@ -1234,7 +1281,7 @@ class View(QGraphicsView):
 
             newItems = []
             for sel in selected[::-1]:
-                newPos = sel.pos() + QPointF(25,25)
+                newPos = sel.pos() + offset
                 item = SceneItem(sel.pickerItem.duplicate())
                 scene.addItem(item)
                 item.setPos(newPos)
@@ -1249,12 +1296,9 @@ class View(QGraphicsView):
             undoFunc = lambda scene=scene, items=newItems, oldSelection=selected: ([scene.removeItem(item) for item in items],
                                                                                    scene.clearSelection(),
                                                                                    [item.setSelected(True) for item in oldSelection])
-            self.scene().undoAppend("duplicate", undoFunc)
+            scene.undoAppend("duplicate", undoFunc)
 
-    def makeRowColumnFromSelected(self, orientation, size):
-        if not self.scene().editMode():
-            return
-
+    def makeRowColumnFromSelected(self, orientation, size=0):
         selected = self.scene().sortedSelection()
         if len(selected) > 1:
             self.scene().undoNewBlock()
@@ -1265,13 +1309,13 @@ class View(QGraphicsView):
                 prevHeight = roundTo(selected[prev].boundingRect().height())
 
                 if orientation=="column":
-                    item.setPos(selected[0].x(), selected[prev].pos().y()+prevHeight+size)
+                    item.setPos(selected[0].x(), selected[prev].y()+prevHeight+size)
                 elif orientation=="row":
-                    item.setPos(selected[prev].pos().x()+prevWidth+size, selected[0].y())
+                    item.setPos(selected[prev].x()+prevWidth+size, selected[0].y())
                 elif orientation=="ldiag":
-                    item.setPos(selected[prev].x()-size*2, selected[prev].pos().y()+prevHeight+5)
+                    item.setPos(selected[prev].x()-prevWidth-size, selected[prev].y()+prevHeight+size)
                 elif orientation=="rdiag":
-                    item.setPos(selected[prev].x()+size*2, selected[prev].pos().y()+prevHeight+5)
+                    item.setPos(selected[prev].x()+prevWidth+size, selected[prev].y()+prevHeight+size)
                 prev +=1
 
     def setSameSize(self):
@@ -1355,7 +1399,7 @@ class View(QGraphicsView):
         elif event.buttons() == Qt.MiddleButton:
             if self.items(event.pos()): # when items under mouse
                 super(View, self).mousePressEvent(event)
-            
+
             self._isPanning = True
             self._panningPos = event.pos()
 
@@ -1374,9 +1418,9 @@ class View(QGraphicsView):
             self.scale(scale, scale)
             self._mouseMovePos = event.pos()
 
-        elif (ctrl or alt) and event.buttons() == Qt.MiddleButton and self._isPanning: 
+        elif (ctrl or alt) and event.buttons() == Qt.MiddleButton and self._isPanning:
             self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - (event.x() - self._panningPos.x()))
-            self.verticalScrollBar().setValue(self.verticalScrollBar().value() - (event.y() - self._panningPos.y()))              
+            self.verticalScrollBar().setValue(self.verticalScrollBar().value() - (event.y() - self._panningPos.y()))
             self._panningPos = event.pos()
 
         elif event.buttons() == Qt.LeftButton and self.rubberBand:
@@ -2064,10 +2108,7 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
 
     def toggleEditMode(self):
         self.scene.setEditMode(False if self.scene.editMode() else True)
-
-        selection = self.scene.sortedSelection()
-        if selection:
-            self.scene.propertiesWidget.updateProperties(selection[0].pickerItem)
+        self.scene.updateProperties()
 
     def editModeChanged(self, v):
         self.toggleEditModeBtn.setStyleSheet("background-color: #dddd88" if v else "")
@@ -2165,6 +2206,11 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
         duplicateAction.triggered.connect(lambda _=None:self.view.duplicateItems())
         editMenu.addAction(duplicateAction)
 
+        mirrorAction = QAction("Mirror", self)
+        mirrorAction.setShortcut("Ctrl+M")
+        mirrorAction.triggered.connect(lambda _=None:self.view.mirrorItems())
+        editMenu.addAction(mirrorAction)
+
         flipPositionMenu = QMenu("Flip", self)
         for typ in ["left", "right", "up", "down"]:
             action = QAction(typ.capitalize(), self)
@@ -2215,14 +2261,23 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
 
         # Structure
         arrangementMenu = QMenu("Arrangement", self)
-        for label, orientation in [("Make row","row"), ("Make column", "column"), ("Make left diagonal", "ldiag"), ("Make right diagonal", "rdiag")]:
+
+        # row and column
+        for label, orientation in [("Make row","row"), ("Make column", "column")]:
             orientMenu = QMenu(label, self)
-            for label, size in [("Tiny", 5), ("Small", 10), ("Medium", 20), ("Large",40)]:
+            for label, size in [("No space", 0), ("Tiny", 5), ("Small", 15), ("Medium", 25), ("Large",35)]:
                 action = QAction(label, self)
                 action.triggered.connect(lambda _=None, orientation=orientation, size=size: self.view.makeRowColumnFromSelected(orientation, size))
-
                 orientMenu.addAction(action)
             arrangementMenu.addMenu(orientMenu)
+
+        ldiagAction = QAction("Make left diagonal", self)
+        ldiagAction.triggered.connect(lambda _=None: self.view.makeRowColumnFromSelected("ldiag", 0))
+        arrangementMenu.addAction(ldiagAction)
+
+        rdiagAction = QAction("Make right diagonal", self)
+        rdiagAction.triggered.connect(lambda _=None: self.view.makeRowColumnFromSelected("rdiag", 0))
+        arrangementMenu.addAction(rdiagAction)
 
         alignMenu = QMenu("Align", self)
         for label, key, edge in [("Left", "[", "left"), ("Right", "]", "right"), ("Top", "_", "top"), ("HCenter","=", "hcenter"), ("VCenter", "-", "vcenter")]:
@@ -2243,6 +2298,7 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
 
         sizeMenu.addSeparator()
         sameSizeAction = QAction("As first selected", self)
+        sameSizeAction.setShortcut("*")
         sameSizeAction.triggered.connect(lambda _=None:self.view.setSameSize())
         sizeMenu.addAction(sameSizeAction)
 
@@ -2314,7 +2370,7 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
 
         self.mayaParameters.selectionChangedCallbackId = None
         self.mayaParameters.visibilityCallbackIds = []
-    
+
     def toggleStayOnTop(self):
         if self._stayOnTopEnabled:
             self.setWindowFlags(self.windowFlags() & ~Qt.WindowStaysOnTopHint)
