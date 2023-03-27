@@ -59,7 +59,7 @@ class PickerItem(object):
         self.background = "#eaa763"
         self.foreground = "#000000"
         self.image = "" # pixmap bytes
-        self.imageAspectRatio = 2 # 0-IgnoreAspectRatio, 1-KeepAspectRatio, 2-KeepAspectRatioByExpanding
+        self.imageAspectRatio = 0 # 0-IgnoreAspectRatio, 1-KeepAspectRatio, 2-KeepAspectRatioByExpanding
         self.control = ""
         self.label = ""
         self.font = ""
@@ -631,7 +631,7 @@ class SceneItem(QGraphicsItem):
 
                 fontMetrics = QFontMetrics(painter.font())
                 textSize = fontMetrics.boundingRect(self.pickerItem.label)
-                painter.drawText(boundingRect.center() - QPoint(textSize.width()/2, -textSize.height()/3), self.pickerItem.label)
+                painter.drawText(boundingRect.center() - QPoint(textSize.width()/2, -textSize.height()/4), self.pickerItem.label)
 
         if self.isSelected():
             painter.setBrush(Qt.NoBrush)
@@ -1210,9 +1210,8 @@ class View(QGraphicsView):
             for ctrl in controls:
                 pickerItem = PickerItem(shapeBrower.selectedSvgpath)
 
+                pickerItem.control = ctrl
                 if cmds.objExists(scene.mayaParameters.namespace+ctrl):
-                    pickerItem.control = ctrl
-
                     nodeColor = getNodeColor(scene.mayaParameters.namespace+ctrl)
                     if nodeColor:
                         pickerItem.background = nodeColor
@@ -1702,6 +1701,7 @@ class PropertiesWidget(QWidget):
         self.controlWidget.editingFinished.connect(self.controlChanged)
         self.controlWidget.returnPressed.connect(self.controlChanged)
         addControlBtn = QPushButton("<<")
+        addControlBtn.setFixedWidth(40)
         addControlBtn.clicked.connect(self.addControlClicked)
         controlLayout.addWidget(self.controlWidget)
         controlLayout.addWidget(addControlBtn)
@@ -1714,6 +1714,7 @@ class PropertiesWidget(QWidget):
         self.labelWidget.returnPressed.connect(self.labelChanged)
         fontBtn = QPushButton("Font")
         fontBtn.clicked.connect(self.fontChanged)
+        fontBtn.setFixedWidth(40)
         labelLayout.addWidget(self.labelWidget)
         labelLayout.addWidget(fontBtn)
         labelLayout.setStretch(0,1)
