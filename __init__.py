@@ -1368,7 +1368,9 @@ class View(QGraphicsView):
             super(View, self).keyPressEvent(event)
 
     def mousePressEvent(self, event):
-        if event.buttons() == Qt.LeftButton:
+        alt = event.modifiers() & Qt.AltModifier
+
+        if not alt and event.button() == Qt.LeftButton:
             self.selectionBeforeRubberBand = self.scene().sortedSelection()
 
             itemAt = self.itemAt(event.pos())
@@ -1394,7 +1396,7 @@ class View(QGraphicsView):
         elif event.button() == Qt.RightButton:
             self._mouseMovePos = event.pos()
 
-        elif event.buttons() == Qt.MiddleButton:
+        elif event.buttons() in [Qt.LeftButton, Qt.MiddleButton]:
             if self.items(event.pos()): # when items under mouse
                 super(View, self).mousePressEvent(event)
 
@@ -1416,7 +1418,7 @@ class View(QGraphicsView):
             self.scale(scale, scale)
             self._mouseMovePos = event.pos()
 
-        elif (ctrl or alt) and event.buttons() == Qt.MiddleButton and self._isPanning:
+        elif (ctrl or alt) and event.buttons() in [Qt.LeftButton, Qt.MiddleButton] and self._isPanning:
             self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - (event.x() - self._panningPos.x()))
             self.verticalScrollBar().setValue(self.verticalScrollBar().value() - (event.y() - self._panningPos.y()))
             self._panningPos = event.pos()
