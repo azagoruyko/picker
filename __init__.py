@@ -183,15 +183,15 @@ def findSymmetricName(name, left=True, right=True):
 
 def pixmap2str(pixmap):
     ba = QByteArray()
-    buff = QBuffer(ba)
-    buff.open(QIODevice.WriteOnly)
-    pixmap.save(buff, "JPG", 100)
-    return base64.b64encode(ba.data()).decode("utf8")
+    buf = QBuffer(ba)
+    buf.open(QIODevice.WriteOnly)
+    pixmap.save(buf, "JPG", 100)
+    buf.close()
+    return base64.b64encode(ba.data())
 
 def str2pixmap(pixmapStr):
-    ba = QByteArray.fromRawData(base64.b64decode(pixmapStr.encode("utf8")))
     pixmap = QPixmap()
-    pixmap.loadFromData(ba, "JPG")
+    pixmap.loadFromData(base64.b64decode(pixmapStr))
     return pixmap
 
 def mayaVisibilityCallback(attr, data):
@@ -510,7 +510,7 @@ class SceneItem(QGraphicsItem):
 
         pixmap = None
         if self.pickerItem.image.startswith("/9j/"): # image bytes
-            pixmap = str2pixmap(self.pickerItem.image)
+            pixmap = str2pixmap(self.pickerItem.image)            
         else:
             imagePath = os.path.expandvars(self.pickerItem.image)
             if os.path.exists(imagePath):
@@ -2329,7 +2329,7 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
 
                 node = item.pickerItem.control if item.pickerItem.control.startswith(":") else self.mayaParameters.namespace+item.pickerItem.control
 
-                if pm.objExists(node):
+                if cmds.objExists(node):
                     node = pm.PyNode(node)
 
                     item.setSelected(node.name() in ls)
@@ -2339,17 +2339,18 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
                     else:
                         controlItemDict[node.name()].append(item)
 
-                    hierarchy = [node]+node.getAllParents()
-                    for n in hierarchy:
-                        data = {"hierarchy":hierarchy, "item":item}
-                        callback = pm.scriptJob(ac=[n+".v", pm.Callback(mayaVisibilityCallback, n+".v", data)], kws=True) # attribute change on visibility
-                        self.mayaParameters.visibilityCallbackIds.append(callback)
+                    if cmds.objExists(node+".visibility"): # for dag nodes that can be hidden
+                        hierarchy = [node]+node.getAllParents()
+                        for n in hierarchy:
+                            data = {"hierarchy":hierarchy, "item":item}
+                            callback = pm.scriptJob(ac=[n+".v", pm.Callback(mayaVisibilityCallback, n+".v", data)], kws=True) # attribute change on visibility
+                            self.mayaParameters.visibilityCallbackIds.append(callback)
 
-                    item.isMayaControlHidden = False
-                    for h in hierarchy:
-                        if not h.v.get():
-                            item.isMayaControlHidden = True
-                            break
+                        item.isMayaControlHidden = False
+                        for h in hierarchy:
+                            if not h.v.get():
+                                item.isMayaControlHidden = True
+                                break
 
                     item.isMayaControlInvalid = False
                 else:
