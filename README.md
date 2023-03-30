@@ -28,7 +28,6 @@ picker.restoreFromMayaNode() # restore pickers from current scene or create a ne
 
 ## Custom shapes
 All shapes are kept in *shapes.json* as SVG-path items. So you can use any SVG-path editor to draw what you need and insert it here in *shape.json*.
-Currently picker doesn't support A/a command for paths.
 
 ## Animschool picker converter
 Use `animschool_converter.py` script for this purpose.
