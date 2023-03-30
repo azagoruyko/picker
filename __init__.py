@@ -2,7 +2,7 @@ import os
 import sys
 import json
 import re
-#import svg.path as svg
+import math
 import base64
 
 from Qt.QtGui import *
@@ -272,7 +272,7 @@ def parsePath(path):
     sign = 1
 
     for c in path+" ":
-        if c in ["M", "m", "L", "l", "H", "h", "V", "v", "C", "c", "Q", "q", "A", "a","Z", "z"]:
+        if c in ["M", "m", "L", "l", "H", "h", "V", "v", "C", "c", "Q", "q", "A", "a", "Z", "z", "T", "t", "S", "s"]:
             if currentNumber:
                 commandNumbers.append(float(currentNumber)*sign)
                 sign = 1
@@ -299,7 +299,102 @@ def parsePath(path):
     commands.append((currentCommand, commandNumbers))
     return commands
 
+def pathArc(path, rx, ry, x_axis_rotation, large_arc_flag, sweep_flag, x, y, curx, cury):
+    # translated from https://code.qt.io/cgit/qt/qtsvg.git/tree/src/svg/qsvghandler.cpp
+    
+    def pathArcSegment(path, xc, yc, th0, th1, rx, ry, xAxisRotation):
+        sinTh = math.sin(xAxisRotation * (math.pi / 180.0))
+        cosTh = math.cos(xAxisRotation * (math.pi / 180.0))
+
+        a00 =  cosTh * rx
+        a01 = -sinTh * ry
+        a10 =  sinTh * rx
+        a11 =  cosTh * ry
+
+        thHalf = 0.5 * (th1 - th0)
+        t = (8.0 / 3.0) * math.sin(thHalf * 0.5) * math.sin(thHalf * 0.5) / math.sin(thHalf)
+        x1 = xc + math.cos(th0) - t * math.sin(th0)
+        y1 = yc + math.sin(th0) + t * math.cos(th0)
+        x3 = xc + math.cos(th1)
+        y3 = yc + math.sin(th1)
+        x2 = x3 + t * math.sin(th1)
+        y2 = y3 - t * math.cos(th1)
+
+        path.cubicTo(a00 * x1 + a01 * y1, a10 * x1 + a11 * y1,
+                     a00 * x2 + a01 * y2, a10 * x2 + a11 * y2,
+                     a00 * x3 + a01 * y3, a10 * x3 + a11 * y3)
+                     
+    Pr1 = rx * rx
+    Pr2 = ry * ry
+
+    if Pr1==0 or Pr2==0:
+        return
+
+    rx = abs(rx)
+    ry = abs(ry)
+
+    sin_th = math.sin(x_axis_rotation * (math.pi / 180.0))
+    cos_th = math.cos(x_axis_rotation * (math.pi / 180.0))
+
+    dx = (curx - x) / 2.0
+    dy = (cury - y) / 2.0
+    dx1 =  cos_th * dx + sin_th * dy
+    dy1 = -sin_th * dx + cos_th * dy
+    Px = dx1 * dx1
+    Py = dy1 * dy1
+    # Spec : check if radii are large enough
+    check = Px / Pr1 + Py / Pr2
+    if check > 1:
+        rx = rx * math.sqrt(check)
+        ry = ry * math.sqrt(check)
+
+    a00 =  cos_th / rx
+    a01 =  sin_th / rx
+    a10 = -sin_th / ry
+    a11 =  cos_th / ry
+    x0 = a00 * curx + a01 * cury
+    y0 = a10 * curx + a11 * cury
+    x1 = a00 * x + a01 * y
+    y1 = a10 * x + a11 * y
+
+    # (x0, y0) is current point in transformed coordinate space.
+    # (x1, y1) is new point in transformed coordinate space.
+    # The arc fits a unit-radius circle in this space.
+
+    d = (x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0)
+    if d == 0:
+        return
+
+    sfactor_sq = 1.0 / d - 0.25
+    if sfactor_sq < 0: sfactor_sq = 0
+    sfactor = math.sqrt(sfactor_sq)
+    if sweep_flag == large_arc_flag: sfactor = -sfactor
+    xc = 0.5 * (x0 + x1) - sfactor * (y1 - y0)
+    yc = 0.5 * (y0 + y1) + sfactor * (x1 - x0)
+    # (xc, yc) is center of the circle.
+
+    th0 = math.atan2(y0 - yc, x0 - xc)
+    th1 = math.atan2(y1 - yc, x1 - xc)
+
+    th_arc = th1 - th0
+    if th_arc < 0 and sweep_flag:
+        th_arc += 2 * math.pi
+    elif th_arc > 0 and not sweep_flag:
+        th_arc -= 2 * math.pi
+
+    n_segs = int(math.ceil(abs(th_arc / (math.pi * 0.5 + 0.001))))
+
+    for i in range(n_segs):
+        pathArcSegment(path, xc, yc,
+                       th0 + i * th_arc / n_segs,
+                       th0 + (i + 1) * th_arc / n_segs,
+                       rx, ry, x_axis_rotation)
+
 def getPainterPath(path, scaleX=1, scaleY=1, flipX=False, flipY=False, rotate=False):
+    # translated from https://code.qt.io/cgit/qt/qtsvg.git/tree/src/svg/qsvghandler.cpp
+
+    scaledPointF = lambda p: QPointF(p.x()*scaleX, p.y()*scaleY)
+
     painterPath = QPainterPath()
 
     data = parsePath(path)
@@ -310,8 +405,14 @@ def getPainterPath(path, scaleX=1, scaleY=1, flipX=False, flipY=False, rotate=Fa
         maxX = rect.width()
         maxY = rect.height()
 
+    x0, y0 = 0, 0 ## starting point
+    x, y = 0,0 # current point
+    lastMode = ""
+    ctrlPt = QPointF()
+
     for cmd, numbers in data:
-        cp = painterPath.currentPosition()
+        #cp = painterPath.currentPosition()
+        offsetX, offsetY = x, y
 
         if rotate:
             cmdInversion = {"h":"v", "H":"V", "v":"h", "V": "H"}
@@ -334,67 +435,143 @@ def getPainterPath(path, scaleX=1, scaleY=1, flipX=False, flipY=False, rotate=Fa
                     numbers[i] = maxY-numbers[i]
                 elif flipY and cmd == "v":
                     numbers[i] *= -1
-                elif cmd in ["M", "m", "L", "l", "C", "c", "Q","q"]:
+                elif cmd in ["M", "m", "L", "l", "C", "c", "Q", "q", "T", "t", "S", "s"]:
                     if flipX and i%2==0: # x
                         numbers[i] = maxX-numbers[i]
                     if flipY and i%2!=0: # y
                         numbers[i] = maxY-numbers[i]
+                elif cmd == "A":
+                    if flipX: numbers[5] = maxX-numbers[5]
+                    if flipY: numbers[6] = maxY-numbers[6]
 
         if cmd == "M":
-            painterPath.moveTo(numbers[0]*scaleX, numbers[1]*scaleY)
+            x = x0 = numbers[0]
+            y = y0 = numbers[1]
+            painterPath.moveTo(x0*scaleX, y0*scaleY)
+
         elif cmd == "m":
-            painterPath.moveTo(cp.x()+numbers[0]*scaleX, cp.y()+numbers[1]*scaleY)
+            x = x0 = num[0] + offsetX
+            y = y0 = num[1] + offsetY
+            painterPath.moveTo(x0*scaleX, y0*scaleY)
 
         elif cmd == "L":
-            painterPath.lineTo(numbers[0]*scaleX, numbers[1]*scaleY)
+            x = numbers[0]
+            y = numbers[1]
+            painterPath.lineTo(x*scaleX, y*scaleY)
+
         elif cmd == "l":
-            painterPath.lineTo(cp.x()+numbers[0]*scaleX, cp.y()+numbers[1]*scaleY)
+            x = numbers[0] + offsetX
+            y = numbers[1] + offsetY
+            painterPath.lineTo(x*scaleX, y*scaleY)
 
         elif cmd == "H":
-            painterPath.lineTo(numbers[0]*scaleX, cp.y())
+            x = numbers[0]
+            painterPath.lineTo(x*scaleX, y*scaleY)
+
         elif cmd == "h":
-            painterPath.lineTo(cp.x()+numbers[0]*scaleX, cp.y())
+            x = numbers[0] + offsetX
+            painterPath.lineTo(x*scaleX, y*scaleY)
 
         elif cmd == "V":
-            painterPath.lineTo(cp.x(), numbers[0]*scaleY)
+            y = numbers[0]
+            painterPath.lineTo(x*scaleX, y*scaleY)
+
         elif cmd == "v":
-            painterPath.lineTo(cp.x(), cp.y()+numbers[0]*scaleY)
+            y = numbers[0] + offsetY
+            painterPath.lineTo(x*scaleX, y*scaleY)
 
         elif cmd == "C":
-            painterPath.cubicTo(numbers[0]*scaleX, numbers[1]*scaleY, numbers[2]*scaleX, numbers[3]*scaleY, numbers[4]*scaleX, numbers[5]*scaleY)
+            c1 = QPointF(numbers[0], numbers[1])
+            c2 = QPointF(numbers[2], numbers[3])
+            e = QPointF(numbers[4], numbers[5])
+            painterPath.cubicTo(scaledPointF(c1), scaledPointF(c2), scaledPointF(e))
+            ctrlPt = c2
+            x = e.x()
+            y = e.y()
+
         elif cmd == "c":
-            painterPath.cubicTo(cp.x()+numbers[0]*scaleX, cp.y()+numbers[1]*scaleY, cp.x()+numbers[2]*scaleX, cp.y()+numbers[3]*scaleY, cp.x()+numbers[4]*scaleX, cp.y()+numbers[5]*scaleY)
+            c1 = QPointF(numbers[0] + offsetX, numbers[1] + offsetY)
+            c2 = QPointF(numbers[2] + offsetX, numbers[3] + offsetY)
+            e = QPointF(numbers[4] + offsetX, numbers[5] + offsetY)
+            painterPath.cubicTo(scaledPointF(c1), scaledPointF(c2), scaledPointF(e))
+            ctrlPt = c2
+            x = e.x()
+            y = e.y()
+
+        elif cmd == "S":
+            c1 = QPointF(2*x-ctrlPt.x(), 2*y-ctrlPt.y()) if lastMode in ["C", "c", "S", "s"] else QPointF(x, y)
+            c2 = QPointF(numbers[0], numbers[1])
+            e = QPointF(numbers[2], numbers[3])
+            path.cubicTo(scaledPointF(c1), scaledPointF(c2), scaledPointF(e))
+            ctrlPt = c2
+            x = e.x()
+            y = e.y()
+
+        elif cmd == "s":
+            c1 = QPointF(2*x-ctrlPt.x(), 2*y-ctrlPt.y()) if lastMode in ["C", "c", "S", "s"] else QPointF(x, y)
+            c2 = QPointF(num[0] + offsetX, num[1] + offsetY)
+            e = QPointF(num[2] + offsetX, num[3] + offsetY)
+            path.cubicTo(scaledPointF(c1), scaledPointF(c2), scaledPointF(e))
+            ctrlPt = c2
+            x = e.x()
+            y = e.y()
 
         elif cmd == "Q":
-            painterPath.quadTo(numbers[0]*scaleX, numbers[1]*scaleY, numbers[2]*scaleX, numbers[3]*scaleY)
+            c = QPointF(numbers[0], numbers[1])
+            e = QPointF(numbers[2], numbers[3])
+            painterPath.quadTo(scaledPointF(c), scaledPointF(e))
+            ctrlPt = c
+            x = e.x()
+            y = e.y()
+
         elif cmd == "q":
-            painterPath.quadTo(cp.x()+numbers[0]*scaleX, cp.y()+numbers[1]*scaleY, cp.x()+numbers[2]*scaleX, cp.y()+numbers[3]*scaleY)
+            c = QPointF(numbers[0] + offsetX, numbers[1] + offsetY)
+            e = QPointF(numbers[2] + offsetX, numbers[3] + offsetY)
+            painterPath.quadTo(scaledPointF(c), scaledPointF(e))
+            ctrlPt = c
+            x = e.x()
+            y = e.y()
 
         elif cmd in ["Z", "z"]:
             painterPath.closeSubpath()
-        '''
-        elif cmd == "A":
-            start = complex(cp.x(), cp.y())
-            rad = complex(numbers[0]*scaleX, numbers[1]*scaleY)
-            end = complex(numbers[5]*scaleX, numbers[6]*scaleY)
+            x = x0
+            y = y0
 
-            arc = svg.Arc(start, rad, numbers[2],numbers[3], numbers[4], end)
-            N = 25
-            for i in range(N):
-                p = arc.point(i/float(N-1))
-                painterPath.lineTo(QPointF(p.real, p.imag))
+        elif cmd == "T":
+            e = QPointF(numbers[0], numbers[1])
+            c = QPointF(2*x-ctrlPt.x(), 2*y-ctrlPt.y()) if lastMode in ["Q", "q", "T", "t"] else QPointF(x, y)
+            painterPath.quadTo(scaledPointF(c), scaledPointF(e))
+            ctrlPt = c
+            x = e.x()
+            y = e.y()
+
+        elif cmd == "t":
+            e = QPointF(numbers[0] + offsetX, numbers[1] + offsetY)
+            c = QPointF(2*x-ctrlPt.x(), 2*y-ctrlPt.y()) if lastMode in ["Q", "q", "T", "t"] else QPointF(x, y)
+            painterPath.quadTo(scaledPointF(c), scaledPointF(e))
+            ctrlPt = c
+            x = e.x()
+            y = e.y()
+
+        elif cmd == "A":
+            rx, ry, xAxisRotation, largeArcFlag, sweepFlag, ex, ey = numbers
+            curx = x
+            cury = y
+            pathArc(painterPath, rx, ry, xAxisRotation, int(largeArcFlag), int(sweepFlag), ex*scaleX, ey*scaleY, curx*scaleX, cury*scaleY)
+            x = ex
+            y = ey
 
         elif cmd == "a":
-            start = complex(cp.x(), cp.y())
-            rad = complex(numbers[0]*scaleX, numbers[1]*scaleY)
-            end = complex(cp.x()+numbers[5]*scaleX, cp.y()+numbers[6]*scaleY)
+            rx, ry, xAxisRotation, largeArcFlag, sweepFlag, ex, ey = numbers
+            ex += offsetX
+            ey += offsetY
+            curx = x
+            cury = y
+            pathArc(painterPath, rx, ry, xAxisRotation, int(largeArcFlag), int(sweepFlag), ex*scaleX, ey*scaleY, curx*scaleX, cury*scaleY)
+            x = ex
+            y = ey
 
-            arc = svg.Arc(start, rad, numbers[2], numbers[3], numbers[4], end)
-            N = 25
-            for i in range(N):
-                p = arc.point(i/float(N-1))
-                painterPath.lineTo(QPointF(p.real, p.imag))
-        '''
+        lastMode = cmd
 
     rect = painterPath.boundingRect()
     painterPath.translate(-rect.x(), -rect.y())
@@ -510,7 +687,7 @@ class SceneItem(QGraphicsItem):
 
         pixmap = None
         if self.pickerItem.image.startswith("/9j/"): # image bytes
-            pixmap = str2pixmap(self.pickerItem.image)            
+            pixmap = str2pixmap(self.pickerItem.image)
         else:
             imagePath = os.path.expandvars(self.pickerItem.image)
             if os.path.exists(imagePath):
@@ -969,9 +1146,9 @@ class View(QGraphicsView):
             nodes = [pm.PyNode(n).stripNamespace() for n in mimeData.text().split()]
 
             self.scene().clearSelection()
-            self.insertItems(self.mapToScene(event.pos()), nodes)
-            event.acceptProposedAction()
-            self.somethingDropped.emit()
+            if self.insertItems(self.mapToScene(event.pos()), nodes):
+                event.acceptProposedAction()
+                self.somethingDropped.emit()
 
     def dragMoveEvent(self, event):
         if event.mimeData().hasText():
@@ -1199,12 +1376,13 @@ class View(QGraphicsView):
             if not controls:
                 controls = [""] # single empty item when no selection
 
+        items = []
+
         shapeBrower = ShapeBrowserWidget(parent=self)
         shapeBrower.exec_()
         if shapeBrower.selectedSvgpath:
             scene = self.scene()
 
-            items = []
             oldSelection = scene.sortedSelection()
             scene.beginEditBlock()
             for ctrl in controls:
@@ -1230,8 +1408,8 @@ class View(QGraphicsView):
                                                                                  scene.clearSelection(),
                                                                                  [item.setSelected(True) for item in oldSelection])
             scene.undoAppend("insert", undoFunc)
-
             scene.updateProperties()
+        return items
 
     def rotateItems(self):
         if not self.scene().editMode():
