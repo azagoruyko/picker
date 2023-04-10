@@ -198,21 +198,18 @@ def mayaVisibilityCallback(attr, data):
     item = data["item"]
     if not pm.getAttr(attr):
         item.isMayaControlHidden = True
-        item.update()
+
     else: # check children
+        item.isMayaControlHidden = False
+
         for ch in data["hierarchy"]:
             if not ch.v.get():
                 item.isMayaControlHidden = True
-                item.update()
-                return
-        item.isMayaControlHidden = False
-        item.update()
+                break
+
+    item.update()
 
 def mayaSelectionChangedCallback(mayaParameters, data):
-    def splitNamespace(n):
-        parts = n.split(":")
-        return ":".join(parts[:-1])+":" or "", parts[-1]
-
     if not data:
         return
 
@@ -323,7 +320,7 @@ def pathArc(path, rx, ry, x_axis_rotation, large_arc_flag, sweep_flag, x, y, cur
         path.cubicTo(a00 * x1 + a01 * y1, a10 * x1 + a11 * y1,
                      a00 * x2 + a01 * y2, a10 * x2 + a11 * y2,
                      a00 * x3 + a01 * y3, a10 * x3 + a11 * y3)
-                     
+
     Pr1 = rx * rx
     Pr2 = ry * ry
 
@@ -2109,8 +2106,7 @@ class MayaParameters(object):
         self.pickerIsModified = False # when picker is changed not in Edit Mode (like a position via middle mouse)
         self.pickerWindow = None
 
-        self.visibilityCallbackIds = []
-        self.selectionChangedCallbackId = None
+        self.callbacks = []
 
 class PropertiesWindow(QDialog):
     def __init__(self):
@@ -2500,6 +2496,7 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
 
         ls = set(cmds.ls(sl=True))
 
+        skipNodes = []
         for item in self.scene.items():
             if isinstance(item, SceneItem) and item.pickerItem.control: # for items with controls
                 if len(splitString(item.pickerItem.control)) > 1: # skip multiple selection
@@ -2513,16 +2510,18 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
                     item.setSelected(node.name() in ls)
 
                     if node.name() not in controlItemDict:
-                        controlItemDict[node.name()] = [item]
-                    else:
-                        controlItemDict[node.name()].append(item)
+                        controlItemDict[node.name()] = []
+                    
+                    controlItemDict[node.name()].append(item)
 
                     if cmds.objExists(node+".visibility"): # for dag nodes that can be hidden
                         hierarchy = [node]+node.getAllParents()
                         for n in hierarchy:
-                            data = {"hierarchy":hierarchy, "item":item}
-                            callback = pm.scriptJob(ac=[n+".v", pm.Callback(mayaVisibilityCallback, n+".v", data)], kws=True) # attribute change on visibility
-                            self.mayaParameters.visibilityCallbackIds.append(callback)
+                            if n not in skipNodes:
+                                data = {"hierarchy":hierarchy, "item":item}
+                                callback = pm.scriptJob(ac=[n+".v", pm.Callback(mayaVisibilityCallback, n+".v", data)], kws=True) # attribute change on visibility
+                                self.mayaParameters.callbacks.append(callback)
+                                skipNodes.append(n)
 
                         item.isMayaControlHidden = False
                         for h in hierarchy:
@@ -2536,19 +2535,17 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
 
                 item.update()
 
-        f = lambda data=controlItemDict: mayaSelectionChangedCallback(self.mayaParameters, data)
-        self.mayaParameters.selectionChangedCallbackId = pm.scriptJob(e=["SelectionChanged", f], kws=True)
+        self.mayaParameters.callbacks.append(pm.scriptJob(e=["SelectionChanged", pm.Callback(mayaSelectionChangedCallback, self.mayaParameters, controlItemDict)], kws=True))
+
+        f = lambda: pm.scriptJob(idleEvent=self.installCallbacks, ro=True)
+        self.mayaParameters.callbacks.append(pm.scriptJob(e=["SceneOpened", pm.Callback(f)], ro=True))
 
     def uninstallCallbacks(self):
-        if self.mayaParameters.selectionChangedCallbackId and pm.scriptJob(exists=self.mayaParameters.selectionChangedCallbackId):
-            pm.scriptJob(kill=self.mayaParameters.selectionChangedCallbackId)
+        for cb in self.mayaParameters.callbacks:
+            if pm.scriptJob(exists=cb):
+                pm.scriptJob(kill=cb)
 
-        for callback in self.mayaParameters.visibilityCallbackIds:
-            if pm.scriptJob(exists=callback):
-                pm.scriptJob(kill=callback)
-
-        self.mayaParameters.selectionChangedCallbackId = None
-        self.mayaParameters.visibilityCallbackIds = []
+        self.mayaParameters.callbacks = []
 
     def toggleStayOnTop(self):
         if self._stayOnTopEnabled:
