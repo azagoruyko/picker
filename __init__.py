@@ -5,9 +5,9 @@ import re
 import math
 import base64
 
-from Qt.QtGui import *
-from Qt.QtCore import *
-from Qt.QtWidgets import *
+from PySide2.QtGui import *
+from PySide2.QtCore import *
+from PySide2.QtWidgets import *
 
 import pymel.core as pm
 import pymel.api as api

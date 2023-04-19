@@ -3,12 +3,12 @@ import os
 import sys
 import base64
 
+from picker import Picker, PickerItem, size2scale, color2hex
 from animschool_parser import *
-from classes import *
 
-from Qt.QtGui import QFontMetrics, QFont, QPixmap
-from Qt.QtCore import QByteArray, QBuffer, QIODevice
-from Qt.QtWidgets import QApplication
+from PySide2.QtGui import QFontMetrics, QFont, QPixmap
+from PySide2.QtCore import QByteArray, QBuffer, QIODevice
+from PySide2.QtWidgets import QApplication
 
 if sys.version_info.major > 2:
     RootDirectory = os.path.dirname(__file__)
@@ -27,12 +27,6 @@ def bytes2pixmap(pixmapBytes):
     pixmap = QPixmap()
     pixmap.loadFromData(ba, "PNG")
     return pixmap
-
-def setStylesheet(w):    
-    with open(RootDirectory+"/qss/qstyle.qss", "r") as f:
-        iconsDir = (RootDirectory+"/qss/icons/").replace("\\","/")
-        style = f.read().replace("icons/", iconsDir)
-        w.setStyleSheet(style)	
 
 def convertFromPkrFile(pkrFile):
 	title, buttons, png_data = parse_animschool_picker(pkrFile)
@@ -81,9 +75,5 @@ def convertFromPkrFile(pkrFile):
 
 	with open(pkrFile+".picker", "w") as f: 
 		json.dump(picker.toJson(), f)
-
-if __name__ == '__main__':
-	app = QApplication([])		
-	setStylesheet(app)
 
 #convertFromPkrFile("D:/Reimu_Picker_Body_v3.pkr")
