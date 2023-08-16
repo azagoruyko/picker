@@ -14,7 +14,7 @@ import pymel.api as api
 import maya.cmds as cmds
 
 from shiboken2 import wrapInstance
-mayaMainWindow = wrapInstance(long(api.MQtUtil.mainWindow()), QMainWindow)
+mayaMainWindow = wrapInstance(int(api.MQtUtil.mainWindow()), QMainWindow)
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 
 NiceColors = ['#FF0000', '#FF7F00', '#FFFF00', '#00FF00', '#00FFFF', '#0000FF', '#8B00FF', '#FF00FF', '#FF1493', '#FF69B4', '#FFC0CB', '#FFD700', '#32CD32', '#00FF7F', '#1E90FF', '#8A2BE2']
@@ -163,11 +163,11 @@ class Picker(object):
             self.items.append(item)
 
 def findSymmetricName(name, left=True, right=True):
-    L_starts = {"L_": "R_", "l_": "r_"}
-    L_ends = {"_L": "_R", "_l": "_r"}
+    L_starts = {"L_": "R_", "l_": "r_", "Left":"Right", "left_": "right_"}
+    L_ends = {"_L": "_R", "_l": "_r", "Left": "Right", "_left":"_right"}
 
-    R_starts = {"R_": "L_", "r_": "l_"}
-    R_ends = {"_R": "_L", "_r": "_l"}
+    R_starts = {"R_": "L_", "r_": "l_", "Right":"Left", "right_":"left_"}
+    R_ends = {"_R": "_L", "_r": "_l", "Right":"Left", "_right":"_left"}
 
     for enable, starts, ends in [(left, L_starts, L_ends), (right, R_starts, R_ends)]:
         if enable:
@@ -194,33 +194,30 @@ def str2pixmap(pixmapStr):
     pixmap.loadFromData(base64.b64decode(pixmapStr))
     return pixmap
 
-def mayaVisibilityCallback(attr, data):
-    item = data["item"]
+def mayaVisibilityCallback(attr, item, hierarchy):
     if not pm.getAttr(attr):
         item.isMayaControlHidden = True
 
     else: # check children
         item.isMayaControlHidden = False
 
-        for ch in data["hierarchy"]:
+        for ch in hierarchy:
             if not ch.v.get():
                 item.isMayaControlHidden = True
                 break
 
     item.update()
 
-def mayaSelectionChangedCallback(mayaParameters, data):
-    if not data:
+def mayaSelectionChangedCallback(scene, controlItemDict):
+    if not controlItemDict:
         return
-
-    scene = data.values()[0][0].scene()
-
+    
     scene.blockSignals(True)
     scene.clearSelection()
 
     ls = cmds.ls(sl=True)
     for node in ls:
-        items = data.get(node,[]) # found available item for the control
+        items = controlItemDict.get(node,[]) # found available item for the control
         for item in items:
             item.setSelected(True)
 
@@ -447,8 +444,8 @@ def getPainterPath(path, scaleX=1, scaleY=1, flipX=False, flipY=False, rotate=Fa
             painterPath.moveTo(x0*scaleX, y0*scaleY)
 
         elif cmd == "m":
-            x = x0 = num[0] + offsetX
-            y = y0 = num[1] + offsetY
+            x = x0 = numbers[0] + offsetX
+            y = y0 = numbers[1] + offsetY
             painterPath.moveTo(x0*scaleX, y0*scaleY)
 
         elif cmd == "L":
@@ -506,8 +503,8 @@ def getPainterPath(path, scaleX=1, scaleY=1, flipX=False, flipY=False, rotate=Fa
 
         elif cmd == "s":
             c1 = QPointF(2*x-ctrlPt.x(), 2*y-ctrlPt.y()) if lastMode in ["C", "c", "S", "s"] else QPointF(x, y)
-            c2 = QPointF(num[0] + offsetX, num[1] + offsetY)
-            e = QPointF(num[2] + offsetX, num[3] + offsetY)
+            c2 = QPointF(numbers[0] + offsetX, numbers[1] + offsetY)
+            e = QPointF(numbers[2] + offsetX, numbers[3] + offsetY)
             path.cubicTo(scaledPointF(c1), scaledPointF(c2), scaledPointF(e))
             ctrlPt = c2
             x = e.x()
@@ -2518,8 +2515,7 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
                         hierarchy = [node]+node.getAllParents()
                         for n in hierarchy:
                             if n not in skipNodes:
-                                data = {"hierarchy":hierarchy, "item":item}
-                                callback = pm.scriptJob(ac=[n+".v", pm.Callback(mayaVisibilityCallback, n+".v", data)], kws=True) # attribute change on visibility
+                                callback = pm.scriptJob(ac=[n+".v", pm.Callback(mayaVisibilityCallback, n+".v", item, hierarchy)], kws=True) # attribute change on visibility
                                 self.mayaParameters.callbacks.append(callback)
                                 skipNodes.append(n)
 
@@ -2535,7 +2531,7 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
 
                 item.update()
 
-        self.mayaParameters.callbacks.append(pm.scriptJob(e=["SelectionChanged", pm.Callback(mayaSelectionChangedCallback, self.mayaParameters, controlItemDict)], kws=True))
+        self.mayaParameters.callbacks.append(pm.scriptJob(e=["SelectionChanged", pm.Callback(mayaSelectionChangedCallback, self.scene, controlItemDict)], kws=True))
 
         f = lambda: pm.scriptJob(idleEvent=self.installCallbacks, ro=True)
         self.mayaParameters.callbacks.append(pm.scriptJob(e=["SceneOpened", pm.Callback(f)], ro=True))
