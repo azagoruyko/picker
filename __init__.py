@@ -187,7 +187,7 @@ def pixmap2str(pixmap):
     buf.open(QIODevice.WriteOnly)
     pixmap.save(buf, "JPG", 100)
     buf.close()
-    return base64.b64encode(ba.data())
+    return base64.b64encode(ba.data()).decode("utf8")
 
 def str2pixmap(pixmapStr):
     pixmap = QPixmap()
