@@ -187,7 +187,7 @@ def pixmap2str(pixmap):
     buf.open(QIODevice.WriteOnly)
     pixmap.save(buf, "JPG", 100)
     buf.close()
-    return base64.b64encode(ba.data()).decode("utf8")
+    return base64.b64encode(ba.data())
 
 def str2pixmap(pixmapStr):
     pixmap = QPixmap()
@@ -1916,43 +1916,45 @@ class PropertiesWidget(QWidget):
 
         self.scriptWidget = QTextEdit()
         self.scriptWidget.setWordWrapMode(QTextOption.NoWrap)
+        self.scriptWidget.setPlaceholderText("Use @ as a current namespace (e.g. cmds.setAttr('@cube.tx', 0)")
         self.scriptWidget.setTabStopWidth(16)
+        self.scriptWidget.setMinimumHeight(150)
         self.scriptWidget.textChanged.connect(self.scriptChanged)
 
-        layout.addWidget(QLabel("Shape"))
+        layout.addWidget(QLabel("<b>Shape</b>"))
         layout.addWidget(self.shapeWidget)
 
-        layout.addWidget(QLabel("Background"))
+        layout.addWidget(QLabel("<b>Background</b>"))
         layout.addWidget(self.backgroundColorWidget)
 
-        layout.addWidget(QLabel("Foreground"))
+        layout.addWidget(QLabel("<b>Foreground</b>"))
         layout.addWidget(self.foregroundColorWidget)
 
-        layout.addWidget(QLabel("Image"))
+        layout.addWidget(QLabel("<b>Image</b>"))
         layout.addWidget(self.imageWidget)
 
-        layout.addWidget(QLabel("Aspect ratio"))
+        layout.addWidget(QLabel("<b>Aspect ratio</b>"))
         layout.addWidget(self.imageAspectRatioWidget)
 
-        layout.addWidget(QLabel("Control"))
+        layout.addWidget(QLabel("<b>Control</b>"))
         layout.addLayout(controlLayout)
 
-        layout.addWidget(QLabel("Label"))
+        layout.addWidget(QLabel("<b>Label</b>"))
         layout.addLayout(labelLayout)
 
-        layout.addWidget(QLabel("Group"))
+        layout.addWidget(QLabel("<b>Group</b>"))
         layout.addWidget(self.groupWidget)
 
-        layout.addWidget(QLabel("Flat"))
+        layout.addWidget(QLabel("<b>Flat</b>"))
         layout.addWidget(self.flatWidget)
 
-        layout.addWidget(QLabel("Flipped"))
+        layout.addWidget(QLabel("<b>Flipped</b>"))
         layout.addWidget(self.flippedWidget)
 
-        layout.addWidget(QLabel("Rotated"))
+        layout.addWidget(QLabel("<b>Rotated</b>"))
         layout.addWidget(self.rotatedWidget)
 
-        layout.addWidget(QLabel("Script"))
+        layout.addWidget(QLabel("<b>Script</b>"))
         layout.addWidget(self.scriptWidget)
 
         layout.addStretch()
