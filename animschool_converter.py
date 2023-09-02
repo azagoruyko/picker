@@ -4,7 +4,7 @@ import sys
 import base64
 
 from picker import Picker, PickerItem, size2scale, color2hex
-from animschool_parser import *
+from .animschool_parser import *
 
 from PySide2.QtGui import QFontMetrics, QFont, QPixmap
 from PySide2.QtCore import QByteArray, QBuffer, QIODevice
