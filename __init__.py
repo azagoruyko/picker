@@ -5,17 +5,25 @@ import re
 import math
 import base64
 
-from PySide2.QtGui import *
-from PySide2.QtCore import *
-from PySide2.QtWidgets import *
-
 import pymel.core as pm
 import pymel.api as api
 import maya.cmds as cmds
 
-from shiboken2 import wrapInstance
+mayaVersion = int(cmds.about(mjv=True))
+
+if mayaVersion < 2025: # previous versions use PySide2
+    from PySide2.QtGui import *
+    from PySide2.QtCore import *
+    from PySide2.QtWidgets import *
+    from shiboken2 import wrapInstance
+else: # Maya 2025 and later use PySide6
+    from PySide6.QtGui import *
+    from PySide6.QtCore import *
+    from PySide6.QtWidgets import *
+    from shiboken6 import wrapInstance
+
+#from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 mayaMainWindow = wrapInstance(int(api.MQtUtil.mainWindow()), QMainWindow)
-from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 
 NiceColors = ['#FF0000', '#FF7F00', '#FFFF00', '#00FF00', '#00FFFF', '#0000FF', '#8B00FF', '#FF00FF', '#FF1493', '#FF69B4', '#FFC0CB', '#FFD700', '#32CD32', '#00FF7F', '#1E90FF', '#8A2BE2']
 
@@ -652,7 +660,7 @@ class SceneItem(QGraphicsItem):
         self._startPos = None
         self._lastPos = None
 
-        self.setFlags(QGraphicsItem.ItemIsSelectable | QGraphicsItem.ItemSelectedChange | QGraphicsItem.ItemSendsGeometryChanges | QGraphicsItem.ItemIsMovable)
+        self.setFlags(QGraphicsItem.ItemIsSelectable | QGraphicsItem.ItemSendsGeometryChanges | QGraphicsItem.ItemIsMovable)
         self.setAcceptHoverEvents(True)
 
         self.updateScaleAnchor()
@@ -1107,7 +1115,11 @@ class Scene(QGraphicsScene):
                 item.scaleAnchorItem.setVisible(v)
 
         self._editMode = v
-        self.update() # repaint items
+
+        # repaint items
+        for item in self.items():
+            item.update()
+
         self.editModeChanged.emit(v)
 
 class View(QGraphicsView):
@@ -1129,6 +1141,18 @@ class View(QGraphicsView):
         self.setAcceptDrops(True)
 
         self.setSceneRect(QRect(0,0, 300, 400))
+
+    def contextMenuEvent(self, event):
+        if not self.scene().editMode():
+            return
+
+        parentWindow = self.parent()
+        menuBar = parentWindow.getMenuBar()
+
+        menu = QMenu()
+        for action in menuBar.actions():
+            menu.addAction(action)
+        menu.exec_(event.globalPos())
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasText():
@@ -1665,7 +1689,12 @@ class View(QGraphicsView):
         ctrl = event.modifiers() & Qt.ControlModifier
         alt = event.modifiers() & Qt.AltModifier
         if ctrl or alt:
-            delta = event.delta() / 120
+            
+            if mayaVersion < 2025:
+                delta = event.delta() / 120
+            else:
+                delta = event.angleDelta().y() / 120
+
             scale = 1 + delta*0.1
             self.scale(scale, scale)
 
@@ -1917,7 +1946,12 @@ class PropertiesWidget(QWidget):
         self.scriptWidget = QTextEdit()
         self.scriptWidget.setWordWrapMode(QTextOption.NoWrap)
         self.scriptWidget.setPlaceholderText("Use @ as a current namespace (e.g. cmds.setAttr('@cube.tx', 0)")
-        self.scriptWidget.setTabStopWidth(16)
+
+        if mayaVersion == 2025:
+            self.scriptWidget.setTabStopDistance(16)
+        else:
+            self.scriptWidget.setTabStopWidth(16)
+            
         self.scriptWidget.setMinimumHeight(150)
         self.scriptWidget.textChanged.connect(self.scriptChanged)
 
@@ -2158,7 +2192,7 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
 
         mainLayout = QVBoxLayout()
         self.setLayout(mainLayout)
-        mainLayout.setMargin(0)
+        mainLayout.setContentsMargins(0, 0, 0, 0)
 
         self.propertiesWindow = PropertiesWindow()
 
@@ -2167,9 +2201,7 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
 
         self.view = View(self.scene)
         self.view.pickerLoaded.connect(self.pickerLoaded)
-        self.view.somethingDropped.connect(self.somethingDroppedOnView)
-
-        self.menuBar = self.createMenuBar()
+        self.view.somethingDropped.connect(self.somethingDroppedOnView)        
 
         # tool buttons
         toolsLayout = QHBoxLayout()
@@ -2191,7 +2223,7 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
 
         makeControlBtn = DraggableButton()
         makeControlBtn.setIcon(QIcon(RootDirectory+"/icons/plus.png"))
-        makeControlBtn.setToolTip("Add controls from selection")
+        makeControlBtn.setToolTip("Add controls from selection (drag here)")
 
         focusBtn = QPushButton()
         focusBtn.setIcon(QIcon(RootDirectory+"/icons/focus.png"))
@@ -2217,7 +2249,7 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
         self.namespaceWidget.activated.connect(self.namespaceChanged)
         self.namespaceWidget.mousePressEvent = self.namespaceMousePressEvent
 
-        mainLayout.setMenuBar(self.menuBar)
+        mainLayout.setMenuBar(self.getMenuBar())
         mainLayout.addLayout(toolsLayout)
         mainLayout.addWidget(self.view)
         mainLayout.addWidget(self.namespaceWidget)
@@ -2323,7 +2355,7 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
             self.uninstallCallbacks()
             self.view.newPicker(window)
 
-    def createMenuBar(self):
+    def getMenuBar(self):
         menuBar = QMenuBar()
 
         # file
