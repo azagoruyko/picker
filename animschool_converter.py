@@ -1,19 +1,24 @@
 import json
 import os
-import sys
 import base64
 
 from picker import Picker, PickerItem, size2scale, color2hex
 from .animschool_parser import *
 
-from PySide2.QtGui import QFontMetrics, QFont, QPixmap
-from PySide2.QtCore import QByteArray, QBuffer, QIODevice
-from PySide2.QtWidgets import QApplication
+import maya.cmds as cmds
 
-if sys.version_info.major > 2:
-    RootDirectory = os.path.dirname(__file__)
-else:    
-    RootDirectory = os.path.dirname(__file__.decode(sys.getfilesystemencoding()))
+mayaVersion = int(cmds.about(mjv=True))
+
+if mayaVersion < 2025: # previous versions use PySide2
+    from PySide2.QtGui import QFontMetrics, QFont, QPixmap
+    from PySide2.QtCore import QByteArray, QBuffer, QIODevice
+    from PySide2.QtWidgets import QApplication
+else: # Maya 2025 and later use PySide6
+    from PySide6.QtGui import QFontMetrics, QFont, QPixmap
+    from PySide6.QtCore import QByteArray, QBuffer, QIODevice
+    from PySide6.QtWidgets import QApplication
+
+RootDirectory = os.path.dirname(__file__)
 
 def pixmap2str(pixmap):
     ba = QByteArray()

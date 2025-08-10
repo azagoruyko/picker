@@ -1,12 +1,11 @@
 import os
-import sys
 import json
 import re
 import math
 import base64
+import weakref
 
 import pymel.core as pm
-import pymel.api as api
 import maya.cmds as cmds
 
 mayaVersion = int(cmds.about(mjv=True))
@@ -23,17 +22,20 @@ else: # Maya 2025 and later use PySide6
     from shiboken6 import wrapInstance
 
 #from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
-mayaMainWindow = wrapInstance(int(api.MQtUtil.mainWindow()), QMainWindow)
+mayaMainWindow = wrapInstance(int(pymel.api.MQtUtil.mainWindow()), QMainWindow)
 
 NiceColors = ['#FF0000', '#FF7F00', '#FFFF00', '#00FF00', '#00FFFF', '#0000FF', '#8B00FF', '#FF00FF', '#FF1493', '#FF69B4', '#FFC0CB', '#FFD700', '#32CD32', '#00FF7F', '#1E90FF', '#8A2BE2']
 
-if sys.version_info.major > 2:
-    RootDirectory = os.path.dirname(__file__)
-else:
-    RootDirectory = os.path.dirname(__file__.decode(sys.getfilesystemencoding()))
+RootDirectory = os.path.dirname(__file__)
 
 PickerWindows = []
 Clipboard = []
+
+def safeExec(cmd):
+    allowed_modules = ['cmds', 'pm']
+    safe_globals = {name: globals()[name] for name in allowed_modules if name in globals()}
+    safe_locals = {}
+    exec(cmd, safe_globals, safe_locals)
 
 def getNodeColor(node):
     MayaIndexColors = {
@@ -202,7 +204,12 @@ def str2pixmap(pixmapStr):
     pixmap.loadFromData(base64.b64decode(pixmapStr))
     return pixmap
 
-def mayaVisibilityCallback(attr, item, hierarchy):
+def mayaVisibilityCallback(attr, item_ref, hierarchy):
+    # Получить объект из weak reference
+    item = item_ref() if isinstance(item_ref, weakref.ref) else item_ref
+    if item is None:  # Объект был удален - callback больше не нужен
+        return
+        
     if not pm.getAttr(attr):
         item.isMayaControlHidden = True
 
@@ -216,7 +223,12 @@ def mayaVisibilityCallback(attr, item, hierarchy):
 
     item.update()
 
-def mayaSelectionChangedCallback(scene, controlItemDict):
+def mayaSelectionChangedCallback(scene_ref, controlItemDict):
+    # Получить scene из weak reference
+    scene = scene_ref() if isinstance(scene_ref, weakref.ref) else scene_ref
+    if scene is None:  # Scene был удален
+        return
+        
     if not controlItemDict:
         return
     
@@ -859,7 +871,8 @@ class SceneItem(QGraphicsItem):
         if event.button() == Qt.LeftButton and not scene.editMode() and self.pickerItem.script: # execute script
             pm.undoInfo(ock=True)
             try:
-                exec(self.pickerItem.script.replace("@", scene.mayaParameters.namespace))
+                cmd = self.pickerItem.script.replace("@", scene.mayaParameters.namespace)
+                safeExec(cmd)
             finally:
                 pm.undoInfo(cck=True)
 
@@ -994,11 +1007,13 @@ class Scene(QGraphicsScene):
 
     def updateSortedSelection(self):
         # add prev selection into undo stack
-        undoFunc = lambda items=self.sortedSelection(): (self.clearSelection(), [item.setSelected(True) for item in items])
-        self.undoAppend("selection", undoFunc, str([id(item) for item in self.sortedSelection()]))
+        current_selection = self.sortedSelection()[:]
+        undoFunc = lambda items=current_selection: (self.clearSelection(), [item.setSelected(True) for item in items])
+        self.undoAppend("selection", undoFunc, str([id(item) for item in current_selection]))
 
         # sort selected items by distance to origin
-        selectedItems = sorted(self.selectedItems(), key=lambda item: QVector2D(self.sceneRect().topLeft()-item.pos()).length())
+        sceneOrigin = self.sceneRect().topLeft()
+        selectedItems = sorted(self.selectedItems(), key=lambda item: QVector2D(sceneOrigin-item.pos()).length())
 
         if selectedItems:
             self._sortedSelection = [item for item in self._sortedSelection if item.isSelected()]
@@ -2514,6 +2529,13 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
         if self.scene.editMode():
             self.scene.setEditMode(False)
 
+    def closeEvent(self, event):
+        for callback_id in self.mayaParameters.callbacks:
+            if pm.scriptJob(exists=callback_id):
+                pm.scriptJob(kill=callback_id, force=True)
+        self.mayaParameters.callbacks = []
+        super().closeEvent(event)
+
     def closeThisPicker(self):
         self.uninstallCallbacks()
         self.scene.clear()
@@ -2549,7 +2571,8 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
                         hierarchy = [node]+node.getAllParents()
                         for n in hierarchy:
                             if n not in skipNodes:
-                                callback = pm.scriptJob(ac=[n+".v", pm.Callback(mayaVisibilityCallback, n+".v", item, hierarchy)], kws=True) # attribute change on visibility
+                                item_ref = weakref.ref(item)
+                                callback = pm.scriptJob(ac=[n+".v", pm.Callback(mayaVisibilityCallback, n+".v", item_ref, hierarchy)], kws=True) # attribute change on visibility
                                 self.mayaParameters.callbacks.append(callback)
                                 skipNodes.append(n)
 
@@ -2565,7 +2588,8 @@ class PickerWindow(QFrame): # MayaQWidgetDockableMixin
 
                 item.update()
 
-        self.mayaParameters.callbacks.append(pm.scriptJob(e=["SelectionChanged", pm.Callback(mayaSelectionChangedCallback, self.scene, controlItemDict)], kws=True))
+        scene_ref = weakref.ref(self.scene)
+        self.mayaParameters.callbacks.append(pm.scriptJob(e=["SelectionChanged", pm.Callback(mayaSelectionChangedCallback, scene_ref, controlItemDict)], kws=True))
 
         f = lambda: pm.scriptJob(idleEvent=self.installCallbacks, ro=True)
         self.mayaParameters.callbacks.append(pm.scriptJob(e=["SceneOpened", pm.Callback(f)], ro=True))
